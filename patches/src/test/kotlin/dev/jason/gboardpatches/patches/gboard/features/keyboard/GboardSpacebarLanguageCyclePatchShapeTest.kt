@@ -9,7 +9,7 @@ class GboardSpacebarLanguageCyclePatchShapeTest {
     @Test
     fun runtimeBridgeMethodsMatchRegisteredAbi() {
         assertTrue(RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_BEGIN_FROM_DOWN.encodedAbi.endsWith("beginFromSpacebar(Ljava/lang/Object;)V"))
-        assertTrue(RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER.encodedAbi.endsWith("observePointer(Ljava/lang/Object;)V"))
+        assertTrue(RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER.encodedAbi.endsWith("observePointer(Ljava/lang/Object;Landroid/view/MotionEvent;I)V"))
         assertTrue(RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_RESOLVE_ACTION.encodedAbi.endsWith("resolveAction(Ljava/lang/Object;Ljava/lang/Object;Landroid/view/MotionEvent;I)Ljava/lang/Object;"))
         assertTrue(RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL.encodedAbi.endsWith("clearAll()V"))
     }
