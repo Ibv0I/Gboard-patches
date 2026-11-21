@@ -212,3 +212,45 @@ APK SHA-256: `0bbc448e570f4042692c850f8b5a19458e009d245c5f099bff3c0415574c2402`.
 
 Important: offsets above are absolute offsets of DEX code_item structures, not instruction offsets. The table confirms that `qil` and `qin` are in different DEX files and prevents accidentally resolving the right obfuscated class from the wrong DEX. Register counts and code-unit lengths are verified from the code_item headers. Before mutation, the composer still needs decoded instruction operands, branch targets, try/catch boundaries, and exact method-reference checks from these code items.
 
+
+## Decoded DEX invoke anchors and register words
+
+The instruction streams in the code items above were decoded to identify invoke instructions and their argument registers. Offsets below are code-unit offsets relative to the method's instruction array (not byte offsets in the APK). Register lists are in invoke argument-word order, including the receiver for virtual invokes.
+
+### `Lqil;` in `classes.dex`
+
+| Method | Offset | Invoke target | Registers |
+|---|---:|---|---|
+| `c(MotionEvent,Z)` | 17 | `Lqip;->b(MotionEvent,I)qin` | v9, v10, v0 |
+| | 44 | `Lqin;->F(MotionEvent,I)V` | v1, v10, v0 |
+| | 47 | `Lqin;->l()ActionDef` | v1 |
+| | 120 | `Lqil;->t(qin,MotionEvent,I)V` | v2, v10, v0 |
+| `h(MotionEvent)` | 26 | `Lqin;->v(MotionEvent)V` | v1, v11 |
+| | 43 | `Lqin;->t(MotionEvent,I)V` | v1, v11, v0 |
+| | 46 | `Lqin;->M()Z` | v1 |
+| | 100 | `Lqsl;->c(FFZ)Z` | v2, v3, v4, v9 |
+| `i(MotionEvent)` | 14 | `Lqip;->a(I)qin` | v5, v2 |
+| | 20 | `Lqin;->O(MotionEvent,I)Z` | v2, v6, v0 |
+| | 26 | `Lqil;->t(qin,MotionEvent,I)V` | v2, v6, v0 |
+| | 38 | `Lqin;->A(J,I)V` | v2, v3, v4, v6 |
+| `j(qin)` | 10 | `Lqin;->close()V` | v2 |
+| `t(qin,MotionEvent,I)` | 50 | `Lqin;->m()SoftKeyDef` | v13 |
+| | 56 | `Lqin;->G(MotionEvent,SoftKeyDef,I,I)Z` | v13, v14, v1, v0, v15 |
+| | 115 | `Lqin;->u(ActionDef,SoftKeyDef,J, Z,Z,J,I)V` | v3..v12 |
+| `m()` | 32 | `Lqin;->C()V` | v1 |
+
+### `Lqin;` in `classes2.dex`
+
+| Method | Offset | Invoke target | Registers |
+|---|---:|---|---|
+| `C()` | 2 | `Lqin;->s(J)V` | v0, v1, v2 |
+| | 5 | `Lqin;->ac()V` | v0 |
+| `close()` | 0 | `Lqin;->C()V` | v0 |
+| `s(J)` | 4 | `Lqsl;->a(J)V` | v0, v1, v2 |
+| | 9 | `Lqio;->k()V` | v0 |
+| `A(J,I)` | 2 | `Lqio;->p(qin)V` | v1, v0 |
+| | 5 | `Lqin;->r(J,I)V` | v0..v3 |
+| | 8 | `Lqin;->ac()V` | v0 |
+
+These anchors show that the UP completion call at `qil.t` is at instruction offset 56, and the normal action dispatch is at offset 115. They also show the reset and pooling call sites. They do **not** by themselves authorize insertion: the implementation must still decode and validate all branch targets and try/catch ranges, preserve the stock trackpad branch, and reserve scratch registers safely. In particular, the invoke at `qil.t:56` is the native `G` gate, not the action dispatch; the extension's finish decision must be placed only on its false-return path, before the `qin.u` dispatch at offset 115.
+
