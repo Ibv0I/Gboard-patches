@@ -19,6 +19,25 @@ This document records the bytecode facts verified against the supplied APK. It i
 - `qil.h` is in `classes.dex`. It calls `qin.t(MotionEvent,int)` at `0x2b`. The stock cursor ownership predicate `qsl.c(float,float,boolean)` is called at `0x64`. A custom observer must be placed after the predicate's branch has been evaluated, not merely after the invoke.
 - `qil.t` is in `classes.dex`. The normal action call `qin.u(...)` is an `invoke-virtual/range` at code-unit offset `0x73`, using ten register words beginning at `v3`. The next instruction starts at `0x76` and continues the stock completion path.
 
+## Source archive confirmation and native dispatch path
+
+The uploaded `sources.zip` contains the complete `sources/defpackage/qil.java`
+(18,940 bytes). The relevant Java control flow confirms:
+
+- `qil.h(MotionEvent)` first runs `qin.t(MotionEvent,index)`, then evaluates
+  `qin.m != previousSoftKeyView || qin.q == null || !qsl.c(x,y,false)`.
+  The custom observer belongs only inside the body guarded by that condition.
+- `qil.t(qin,MotionEvent,index)` leaves `qin.G(...)` intact and invokes the
+  ordinary action via `qin.u(...)`; only that action dispatch may be skipped.
+- `qin.r` is the `qio` dispatcher (`qil`), and `qil.b` is its application
+  `Context`.
+
+The source archive also confirms the native language-rotation operation:
+`pga.F(Context).t(true,pfi.d)`. This is the same manager operation reached by
+`pvd.m(ohe)` for action code `-10011`. It is preferable to Android's
+system-level IME switching. The runtime now attempts this native operation
+reflectively and returns false on failure, preserving the ordinary space action.
+
 ## Behavior contract
 
 1. Capture the original pointer-down SoftKeyView. Do not infer the origin from `qin.m` at pointer-up: stock movement can retarget it.
