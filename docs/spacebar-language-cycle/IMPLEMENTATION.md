@@ -136,3 +136,32 @@ The exact best hook is still under evaluation. Existing top-row swipe code demon
 ## Current conclusion
 
 The language-switch target is confirmed, and the event lifecycle is now mapped. The remaining design risk is preserving the original spacebar owner while distinguishing a normal horizontal swipe from the cursor trackpad. No DEX patch has been committed yet.
+
+## Extension module integration findings (21 Nov 2026)
+
+The runtime extension is packaged from the Gradle subproject `extensions:extension` (not a top-level `extension` module). Its Android Java sources live under:
+
+`extensions/extension/src/main/java/dev/jason/gboardpatches/extension/`
+
+The existing top-row runtime is:
+
+`extensions/extension/src/main/java/dev/jason/gboardpatches/extension/toprowswipe/GboardTopRowSwipeRuntime.java`
+
+The patch-side ABI declarations are centralized in:
+
+`patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/shared/runtimeabi/RuntimeAbi.kt`
+
+The `RuntimeCallId` enum and `RuntimeAbiCatalog` are in that same file. Runtime ABI packaging is verified against the extension artifact produced by `project(":extensions:extension").tasks.named("syncExtension")`; adding an ABI enum entry alone is insufficient.
+
+The existing pointer-owner delegate pattern is confirmed in:
+
+`patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/toprowswipe/GboardTopRowSwipePointerPatch.kt`
+
+It inserts a runtime call into the shared pointer-owner method and adds finish/cancel/reset cleanup calls. The composer validates the exact method descriptors, runtime ABI signatures, helper calls, lifecycle placement, and normalized transformation state.
+
+The extension runtime uses weak-keyed session maps and defensive exception handling for reflective access. This is a useful implementation convention, but the top-row swipe's owner-retargeting strategy is not directly suitable for the spacebar feature: the spacebar gesture must retain the original pointer-down view while stock cursor movement remains authoritative.
+
+### Remaining implementation decision
+
+The safest implementation still needs a verified observation point that sees pointer movement after the stock cursor ownership decision, plus a completion hook that can suppress the normal space key action only when the custom gesture was armed. The current pointer-owner composer only patches the `qin` owner method and lifecycle methods; it does not automatically provide access to every `qin` movement callback or the `qil` completion dispatcher. Do not implement a speculative pointer-up-only hook: active-key retargeting makes it unsafe.
+
