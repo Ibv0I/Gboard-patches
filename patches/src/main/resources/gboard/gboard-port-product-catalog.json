@@ -1900,7 +1900,7 @@
     {
       "feature_id": "spacebar_language_cycle",
       "public_patch_name": "Spacebar Language Cycle",
-      "feature_marker": "dev.jason.gboardpatches.feature.spacebar_language_cycle",
+      "feature_marker": null,
       "target_family_ids": [
         "pointer.lifecycle"
       ],
