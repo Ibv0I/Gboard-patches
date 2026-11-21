@@ -165,3 +165,41 @@ The extension runtime uses weak-keyed session maps and defensive exception handl
 
 The safest implementation still needs a verified observation point that sees pointer movement after the stock cursor ownership decision, plus a completion hook that can suppress the normal space key action only when the custom gesture was armed. The current pointer-owner composer only patches the `qin` owner method and lifecycle methods; it does not automatically provide access to every `qin` movement callback or the `qil` completion dispatcher. Do not implement a speculative pointer-up-only hook: active-key retargeting makes it unsafe.
 
+
+## Exact 18.5.4 move and finish code (JADX confirmation)
+
+The decompiled qil source confirms this ordering:
+
+1. Save the previous active SoftKeyView from qin.m.
+2. Call qin.t(event, pointerIndex), which performs stock movement and cursor ownership checks.
+3. If qin.M() remains true, update coordinates/history.
+4. Continue gesture dispatch only if qin.m changed, qin.q is null, or qin.q.c(x, y, false) says the cursor controller does not own the current coordinates.
+
+This establishes a useful distinction: a non-null qin.q alone does not mean the cursor owns the gesture. The extension must respect the same qsl.c(x, y, false) result used by stock dispatch.
+
+The pointer-up completion routine is private static qil.t(qin, MotionEvent, int). Its relevant order is:
+
+1. Update final pointer coordinates and history.
+2. Read the current SoftKeyDef.
+3. Call qin.G(event, softKeyDef, pointerIndex, actionIndex); if it claims the event, normal action dispatch is skipped.
+4. Otherwise resolve the final gesture and ActionDef.
+5. Call qin.u(actionDef, ...), which dispatches the stock key action.
+6. Clear gesture flags and finish the pointer session.
+
+Therefore the most precise consume point, if the runtime can be safely attached to this method, is immediately before qin.u(...): a true runtime result should branch around the stock action and continue through the same cleanup path. This preserves normal tap behavior when the runtime returns false. The move-side observer must be placed after the stock cursor ownership decision and must be able to abandon a session if the cursor controller owns it.
+
+### Important correction to the previous hook proposal
+
+The existing pointer-owner lifecycle composer does not expose the move dispatcher or private qil.t(qin, MotionEvent, int) completion method. A correct implementation likely requires a second, separately preflighted transformation for the 18.5.4 qil dispatcher, composed with the existing pointer-owner transformation. Do not force this into the pointer-owner adapter by guessing register positions.
+
+### Patch-side file discovery
+
+The previously missed files do exist; their exact paths are:
+
+- patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/toprowswipe/GboardTopRowSwipePointerPatch.kt
+- patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/zhuyinslide/GboardZhuyinSlidePointerAnchorPatch.kt
+- patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/shared/GboardPointerOwnerTransformation.kt
+- patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/shared/runtimeabi/RuntimeAbi.kt
+- patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/shared/runtimeabi/RuntimeCallEmitter.kt
+
+The Zhuyin slide patch is a useful example of capturing the original pointer anchor before stock retargeting. Its behavior suppresses retargeting and is not suitable for this feature as-is.
