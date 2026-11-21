@@ -1,142 +1,200 @@
 package dev.jason.gboardpatches.extension.keyboard;
 
 import android.content.Context;
+import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-/**
- * Small, fail-closed state machine for a horizontal gesture that starts on the spacebar.
- *
- * The bytecode patch is responsible for calling begin only for the original spacebar key,
- * observe only after Gboard's cursor/trackpad ownership test, and finish immediately before
- * Gboard dispatches the normal key action. A true finish result means that action may be
- * consumed and the caller may invoke Gboard's native next-language action.
- */
 public final class GboardSpacebarLanguageSwipeRuntime {
     private static final float HORIZONTAL_DOMINANCE = 1.25f;
-
     private static final Map<Object, Session> SESSIONS =
             Collections.synchronizedMap(new WeakHashMap<Object, Session>());
+    private static volatile NativeLanguageSwitcher nativeLanguageSwitcher =
+            GboardSpacebarLanguageSwipeRuntime::switchToNextGboardLanguage;
 
-    private GboardSpacebarLanguageSwipeRuntime() {
+    private GboardSpacebarLanguageSwipeRuntime() { }
+
+    interface NativeLanguageSwitcher {
+        boolean switchToNext(Object pointerOwner);
+    }
+
+    static void setNativeLanguageSwitcherForTests(NativeLanguageSwitcher switcher) {
+        nativeLanguageSwitcher = switcher == null
+                ? GboardSpacebarLanguageSwipeRuntime::switchToNextGboardLanguage : switcher;
     }
 
     private static final class Session {
         final Object originalSpacebar;
-        final float startX;
-        final float startY;
-        final float thresholdPx;
-        boolean qualified;
-        boolean cancelled;
-
-        Session(Object originalSpacebar, float startX, float startY, float thresholdPx) {
+        final float startX, startY, thresholdPx;
+        boolean qualified, cancelled;
+        Session(Object originalSpacebar, float x, float y, float thresholdPx) {
             this.originalSpacebar = originalSpacebar;
-            this.startX = startX;
-            this.startY = startY;
+            this.startX = x;
+            this.startY = y;
             this.thresholdPx = thresholdPx;
         }
     }
 
-    /**
-     * Starts/replaces the current pointer session. Call only after verifying that the
-     * original hit key is the spacebar, before any stock key retargeting occurs.
-     */
-    public static void begin(Object pointerOwner, Object originalSpacebar,
-            float x, float y, float thresholdPx) {
-        if (pointerOwner == null) {
-            return;
+    /** Called after Gboard's qin.F hit-test: recognize PRESS keycode 62 only. */
+    public static void beginFromSpacebar(Object owner) {
+        if (owner == null) return;
+        try {
+            ClassLoader loader = owner.getClass().getClassLoader();
+            Object keyView = field(owner, "m").get(owner);
+            if (keyView == null) { clear(owner); return; }
+            Class<?> qae = Class.forName("defpackage.qae", false, loader);
+            Object press = qae.getField("a").get(null);
+            Object action = keyView.getClass().getMethod("f", qae).invoke(keyView, press);
+            if (action == null) { clear(owner); return; }
+            Object key = action.getClass().getMethod("b").invoke(action);
+            if (key == null || field(key, "c").getInt(key) != 62) {
+                clear(owner);
+                return;
+            }
+            Object qil = field(owner, "r").get(owner);
+            if (qil == null) { clear(owner); return; }
+            Context context = (Context) field(qil, "b").get(qil);
+            if (context == null) { clear(owner); return; }
+            float x = field(owner, "d").getFloat(owner);
+            float y = field(owner, "e").getFloat(owner);
+            float threshold = Math.max(
+                    ViewConfiguration.get(context).getScaledTouchSlop() * 2.0f,
+                    context.getResources().getDisplayMetrics().density * 10.0f);
+            begin(owner, keyView, x, y, threshold);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            clear(owner);
         }
+    }
+
+    /** Called after qin.t retargets the pointer and updates its coordinates. */
+    public static void observePointer(Object owner) {
+        if (owner == null) return;
+        try {
+            if (!Boolean.TRUE.equals(owner.getClass().getMethod("M").invoke(owner))) {
+                clear(owner);
+                return;
+            }
+            float x = field(owner, "d").getFloat(owner);
+            float y = field(owner, "e").getFloat(owner);
+            Object cursor = field(owner, "q").get(owner);
+            boolean cursorOwns = cursor != null && Boolean.TRUE.equals(
+                    cursor.getClass().getMethod("c", float.class, float.class, boolean.class)
+                            .invoke(cursor, x, y, false));
+            observe(owner, x, y, cursorOwns);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            observe(owner, Float.NaN, Float.NaN, true);
+        }
+    }
+
+    /** Returning null consumes only the stock ActionDef; all other paths return it unchanged. */
+    public static Object resolveAction(Object owner, Object stockAction,
+            MotionEvent event, int actionIndex) {
+        if (owner == null || stockAction == null || event == null) return stockAction;
+        final Session session;
+        synchronized (SESSIONS) {
+            session = SESSIONS.get(owner);
+            if (session == null || session.cancelled || !session.qualified) return stockAction;
+        }
+        Field gestureState = null;
+        Object previousState = null;
+        try {
+            int action = event.getActionMasked();
+            if (action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_POINTER_UP) {
+                return stockAction;
+            }
+            if (actionIndex != event.getActionIndex() || actionIndex < 0
+                    || actionIndex >= event.getPointerCount()
+                    || event.getPointerId(actionIndex) != field(owner, "a").getInt(owner)) {
+                return stockAction;
+            }
+
+            gestureState = field(owner, "i");
+            previousState = gestureState.get(owner);
+            gestureState.set(owner, null);
+            if (finish(owner, session.originalSpacebar)) return null;
+            gestureState.set(owner, previousState);
+            return stockAction;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            if (gestureState != null) {
+                try { gestureState.set(owner, previousState); }
+                catch (IllegalAccessException | RuntimeException ignoredRestore) { }
+            }
+            return stockAction;
+        }
+    }
+
+    public static void begin(Object owner, Object originalSpacebar,
+            float x, float y, float thresholdPx) {
+        if (owner == null) return;
         if (originalSpacebar == null || !Float.isFinite(x) || !Float.isFinite(y)
                 || !Float.isFinite(thresholdPx) || thresholdPx <= 0f) {
-            synchronized (SESSIONS) {
-                SESSIONS.remove(pointerOwner);
-            }
+            clear(owner);
             return;
         }
         synchronized (SESSIONS) {
-            SESSIONS.put(pointerOwner,
-                    new Session(originalSpacebar, x, y, thresholdPx));
+            SESSIONS.put(owner, new Session(originalSpacebar, x, y, thresholdPx));
         }
     }
 
-    /**
-     * Observes a move after Gboard evaluated its native cursor/trackpad ownership.
-     * Once cursor handling owns the pointer, this session can never trigger.
-     */
-    public static void observe(Object pointerOwner, float x, float y,
-            boolean cursorOwnsPointer) {
-        if (pointerOwner == null) {
-            return;
-        }
+    public static void observe(Object owner, float x, float y, boolean cursorOwns) {
+        if (owner == null) return;
         synchronized (SESSIONS) {
-            Session session = SESSIONS.get(pointerOwner);
-            if (session == null || session.cancelled || session.qualified) {
+            Session s = SESSIONS.get(owner);
+            if (s == null || s.cancelled || s.qualified) return;
+            if (cursorOwns || !Float.isFinite(x) || !Float.isFinite(y)) {
+                s.cancelled = true;
                 return;
             }
-            if (cursorOwnsPointer || !Float.isFinite(x) || !Float.isFinite(y)) {
-                session.cancelled = true;
-                return;
-            }
-
-            float dx = Math.abs(x - session.startX);
-            float dy = Math.abs(y - session.startY);
-            if (dx >= session.thresholdPx && dx >= dy * HORIZONTAL_DOMINANCE) {
-                session.qualified = true;
-            }
+            float dx = Math.abs(x - s.startX), dy = Math.abs(y - s.startY);
+            if (dx >= s.thresholdPx && dx >= dy * HORIZONTAL_DOMINANCE) s.qualified = true;
         }
     }
 
-    /**
-     * Resolves exactly once on pointer-up. True consumes the normal spacebar action.
-     */
-    public static boolean finish(Object pointerOwner, Object originalSpacebar) {
-        if (pointerOwner == null) {
-            return false;
-        }
+    public static boolean finish(Object owner, Object originalSpacebar) {
+        if (owner == null) return false;
         synchronized (SESSIONS) {
-            Session session = SESSIONS.remove(pointerOwner);
-            if (session == null || session.cancelled || !session.qualified
-                    || session.originalSpacebar != originalSpacebar) {
+            Session s = SESSIONS.remove(owner);
+            if (s == null || s.cancelled || !s.qualified || s.originalSpacebar != originalSpacebar) {
                 return false;
             }
-            // Consume the stock space action only when Gboard confirms the language switch.
-            return switchToNextGboardLanguage(pointerOwner);
         }
+        try { return nativeLanguageSwitcher.switchToNext(owner); }
+        catch (RuntimeException | LinkageError ignored) { return false; }
     }
 
-    /**
-     * Uses Gboard's native layout rotation: pga.F(context).t(true, pfi.d).
-     * If reflection or rotation fails, return false so the stock space action remains.
-     */
-    private static boolean switchToNextGboardLanguage(Object pointerOwner) {
+    public static void clear(Object owner) {
+        if (owner != null) synchronized (SESSIONS) { SESSIONS.remove(owner); }
+    }
+
+    public static void clearAll() {
+        synchronized (SESSIONS) { SESSIONS.clear(); }
+    }
+
+    private static Field field(Object owner, String name) throws NoSuchFieldException {
+        return owner.getClass().getField(name);
+    }
+
+    /** Gboard's own configured language/layout rotation, not InputMethodManager. */
+    private static boolean switchToNextGboardLanguage(Object owner) {
         try {
-            Object dispatcher = pointerOwner.getClass().getField("r").get(pointerOwner);
-            if (dispatcher == null) return false;
-            Context context = (Context) dispatcher.getClass().getField("b").get(dispatcher);
+            Object qil = field(owner, "r").get(owner);
+            if (qil == null) return false;
+            Context context = (Context) field(qil, "b").get(qil);
             if (context == null) return false;
             ClassLoader loader = context.getClassLoader();
-            Class<?> managerClass = Class.forName("defpackage.pga", false, loader);
-            Object manager = managerClass.getMethod("F", Context.class).invoke(null, context);
+            Class<?> pga = Class.forName("defpackage.pga", false, loader);
+            Object manager = pga.getMethod("F", Context.class).invoke(null, context);
             if (manager == null) return false;
-            Class<?> sourceClass = Class.forName("defpackage.pfi", false, loader);
-            Object globeKeySource = sourceClass.getField("d").get(null);
-            Object handled = managerClass.getMethod("t", boolean.class, sourceClass)
-                    .invoke(manager, true, globeKeySource);
-            return Boolean.TRUE.equals(handled);
+            Class<?> pfi = Class.forName("defpackage.pfi", false, loader);
+            Object globe = pfi.getField("d").get(null);
+            return Boolean.TRUE.equals(pga.getMethod("t", boolean.class, pfi)
+                    .invoke(manager, true, globe));
         } catch (ReflectiveOperationException | ClassCastException | LinkageError ignored) {
             return false;
-        }
-    }
-
-    /** Clears state on cancel, reset, pointer replacement, or abandoned gesture. */
-    public static void clear(Object pointerOwner) {
-        if (pointerOwner != null) {
-            synchronized (SESSIONS) {
-                SESSIONS.remove(pointerOwner);
-            }
         }
     }
 }

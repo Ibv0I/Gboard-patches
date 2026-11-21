@@ -1,12 +1,23 @@
 package dev.jason.gboardpatches.extension.keyboard;
 
-import org.junit.Test;
+import org.junit.After;\nimport org.junit.Before;\nimport org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public final class GboardSpacebarLanguageSwipeRuntimeTest {
     private static final float THRESHOLD_PX = 24f;
+
+    @Before
+    public void setUp() {
+        GboardSpacebarLanguageSwipeRuntime.setNativeLanguageSwitcherForTests(owner -> true);
+    }
+
+    @After
+    public void tearDown() {
+        GboardSpacebarLanguageSwipeRuntime.setNativeLanguageSwitcherForTests(null);
+        GboardSpacebarLanguageSwipeRuntime.clearAll();
+    }
 
     @Test
     public void shortTapDoesNotConsumeSpace() {
@@ -81,6 +92,17 @@ public final class GboardSpacebarLanguageSwipeRuntimeTest {
 
         assertTrue(GboardSpacebarLanguageSwipeRuntime.finish(firstOwner, firstSpace));
         assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(secondOwner, secondSpace));
+    }
+
+    @Test
+    public void nativeRotationFailureDoesNotReportGestureAsConsumed() {
+        GboardSpacebarLanguageSwipeRuntime.setNativeLanguageSwitcherForTests(owner -> false);
+        Object owner = new Object();
+        Object space = new Object();
+        GboardSpacebarLanguageSwipeRuntime.begin(owner, space, 100f, 50f, THRESHOLD_PX);
+        GboardSpacebarLanguageSwipeRuntime.observe(owner, 130f, 50f, false);
+        assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(owner, space));
+        assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(owner, space));
     }
 
     @Test
