@@ -87,6 +87,7 @@ import dev.jason.gboardpatches.patches.gboard.features.symbolfooter.gboardSymbol
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeFeatureMarkerPatch
+import dev.jason.gboardpatches.patches.gboard.features.keyboard.gboardSpacebarLanguageCycleBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.writingtools.gboardAiWritingToolsFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.writingtools.gboardAiWritingToolsFlagValuePatch
 import dev.jason.gboardpatches.patches.gboard.shared.gboardPatchesExtensionCarrierPatch
@@ -553,6 +554,21 @@ val gboardCustomTopRowSwipePatch = gboardPublicResourcePatch(
     dependsOn(
         gboardPatchesSettingsPatch,
         gboardTopRowSwipeFeatureMarkerPatch,
+    )
+}
+
+@Suppress("unused")
+val gboardSpacebarLanguageCyclePatch = gboardPublicResourcePatch(
+    featureId = "spacebar_language_cycle",
+    name = "Spacebar Language Cycle",
+    description = "Swipe horizontally across the spacebar to switch to the next configured Gboard language or layout. Taps, long-press and cursor movement keep their native behavior.",
+    default = true,
+) {
+    compatibleWith(COMPATIBILITY_GBOARD)
+
+    dependsOn(
+        gboardPatchesSettingsPatch,
+        gboardSpacebarLanguageCycleBytecodePatch,
     )
 }
 
