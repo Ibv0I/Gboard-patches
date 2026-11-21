@@ -116,7 +116,10 @@ public final class GboardSpacebarLanguageSwipeRuntime {
             gestureState = field(owner, "i");
             previousState = gestureState.get(owner);
             gestureState.set(owner, null);
-            if (finish(owner, session.originalSpacebar)) return null;
+            if (finish(owner, session.originalSpacebar)) {
+                clearLongPressState(owner);
+                return null;
+            }
             gestureState.set(owner, previousState);
             return stockAction;
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
@@ -165,6 +168,25 @@ public final class GboardSpacebarLanguageSwipeRuntime {
         }
         try { return nativeLanguageSwitcher.switchToNext(owner); }
         catch (RuntimeException | LinkageError ignored) { return false; }
+    }
+
+    /** Explicitly discard sessions for Android ACTION_CANCEL without affecting pointer-up. */
+    public static void clearOnCancel(MotionEvent event) {
+        if (event != null && event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+            clearAll();
+        }
+    }
+
+    private static void clearLongPressState(Object owner) {
+        try {
+            Object dispatcher = field(owner, "r").get(owner);
+            if (dispatcher == null) return;
+            Method clear = dispatcher.getClass().getDeclaredMethod("u");
+            clear.setAccessible(true);
+            clear.invoke(dispatcher);
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+            // This cleanup is best-effort; it must never restore a consumed stock action.
+        }
     }
 
     public static void clear(Object owner) {
