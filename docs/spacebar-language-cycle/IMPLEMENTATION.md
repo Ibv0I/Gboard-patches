@@ -256,3 +256,27 @@ The move method is a dispatcher over active `qin` sessions, so its loop register
 6. Build the extension and patch bundle; inspect the resulting DEX to ensure the branch lands after the stock completion cleanup and does not cross a try/catch boundary incorrectly.
 
 No executable patch is claimed at this stage. The next commit should be the verified `qil` bytecode preflight and shape tests, not a speculative runtime gesture implementation.
+
+
+## Target APK DEX inspection (directly read from supplied APK)
+
+The APK was inspected as a DEX container rather than relying only on JADX's Java reconstruction. The relevant definitions are present in these DEX files:
+
+| Method | DEX | Access flags | Registers | Incoming words | Outgoing words | Try blocks |
+|---|---|---:|---:|---:|---:|---:|
+| `qin.B(SoftKeyView,float,float,long,int)` | `classes2.dex` | `0x10` (final) | 21 | 7 | 14 | 0 |
+| `qil.h(MotionEvent)` | `classes.dex` | `0x11` (public, final) | 12 | 2 | 8 | 2 |
+| `qil.t(qin,MotionEvent,int)` | `classes.dex` | `0x0a` (private, static) | 16 | 3 | 10 | 1 |
+
+### Verified DEX call sites
+
+- `qil.h` calls `qin.t(MotionEvent,int)` at code-unit offset `0x2b`.
+- The same method calls `qsl.c(float,float,boolean)` at `0x64`; this is the stock cursor-ownership predicate. The custom move observer must be inserted only after the associated result/branch has been evaluated, not immediately after the invocation.
+- `qil.t` calls `qin.G(...)` before resolving the normal action. The normal action dispatch is the `invoke-virtual/range` to `qin.u(...)` at code-unit offset `0x73`. It uses 10 register words beginning at `v3` (including the receiver). The next instruction begins at `0x76`, where the stock completion path continues.
+- `qin.B` calls `qin.r(J,I)` at `0x0c` and `qin.ac()` at `0x0f` before storing the new key view. The view argument is still available as the incoming parameter when the original pointer owner is established.
+
+### What this establishes — and what it does not
+
+The target APK confirms the descriptors, access flags, code-item register counts, try-block counts, and the key call-site offsets above. In particular, it confirms that the completion hook can be anchored immediately before the stock `qin.u` invocation and that the move observer has to account for the stock cursor predicate.
+
+This is not yet a safe executable transformation. Before emitting instructions, the patch must still resolve the exact field/method references and all branch targets around the cursor predicate and the `qin.u` call, including the `qil.t` try/catch region. The current project binding catalog does not yet declare the `qil.h` and `qil.t` targets. The next code change should add these exact bindings and fail-closed semantic shape checks, then test the candidate mutation against a copied class before enabling runtime calls.
