@@ -1,6 +1,8 @@
 package dev.jason.gboardpatches.extension.keyboard;
 
-import org.junit.After;\nimport org.junit.Before;\nimport org.junit.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
