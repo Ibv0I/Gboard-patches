@@ -1766,6 +1766,16 @@
       "return_type": "V",
       "confidence": 0.99
     },
+    "qil_pointer_cancel": {
+      "kind": "method",
+      "class_type": "Lqil;",
+      "method_name": "i",
+      "parameter_types": [
+        "Landroid/view/MotionEvent;"
+      ],
+      "return_type": "V",
+      "confidence": 0.99
+    },
     "qil_pointer_close": {
       "kind": "method",
       "class_type": "Lqil;",
