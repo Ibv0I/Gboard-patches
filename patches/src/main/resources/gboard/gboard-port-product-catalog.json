@@ -253,7 +253,8 @@
     "zhuyin_toggle_popup_target": "method",
     "zhuyin_toggle_preference_factory": "method",
     "zhuyin_toggle_preference_write": "method",
-    "zhuyin_toggle_reset": "method"
+    "zhuyin_toggle_reset": "method",
+    "qil_pointer_cancel": "method"
   },
   "anchor_families": [
     "dedicated_bytecode",
@@ -1919,6 +1920,7 @@
           "order": 300,
           "required_bindings": [
             "qil_action_up",
+            "qil_pointer_cancel",
             "qil_pointer_close",
             "qil_pointer_down",
             "qil_pointer_move",
@@ -1933,7 +1935,8 @@
             "SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER",
             "SPACEBAR_LANGUAGE_SWIPE_RESOLVE_ACTION",
             "SPACEBAR_LANGUAGE_SWIPE_CLEAR",
-            "SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL"
+            "SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL",
+            "SPACEBAR_LANGUAGE_SWIPE_CLEAR_ON_CANCEL"
           ]
         }
       ]
