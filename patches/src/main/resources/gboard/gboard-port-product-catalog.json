@@ -1909,8 +1909,7 @@
       "consumer_files": [
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/keyboard/GboardSpacebarLanguageCyclePatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardPatchRegistry.kt",
-        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardContributionWiring.kt",
-        "extensions/extension/src/main/java/dev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime.java"
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardContributionWiring.kt"
       ],
       "contributions": [
         {
