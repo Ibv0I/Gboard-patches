@@ -232,3 +232,27 @@ A robust consume hook can therefore be inserted immediately before the `qin.u(..
 
 The JADX Java source is enough to identify semantic insertion points, but it is not enough to author a safe smali transformation: exact instruction indexes, register assignments, branch labels, method access flags, and try/catch boundaries must be checked against the actual target DEX and the repository's generated version bindings. The next implementation task is to add explicit 18.5.4 bindings and shape verifiers for `qil.h` and the private static `qil.t`, then build tests for the injected branch layout before adding runtime behavior. Until those checks exist, no executable patch should be committed.
 
+
+
+## Concrete 18.5.4 method targets for the next bytecode preflight
+
+The supplied decompilation identifies these exact source-level signatures (DEX access flags and code-item shapes still need to be verified from the APK):
+
+| Role | Source-level target | Required verification |
+|---|---|---|
+| Capture original spacebar view | `Lqin;->B(Lcom/google/android/libraries/inputmethod/widgets/SoftKeyView;F F J I)V` | Confirm the existing pointer-owner binding and insertion point before stock retargeting |
+| Observe movement | `Lqil;->h(Landroid/view/MotionEvent;)V` | Public/final status, register count, exact qsl ownership branch, and insertion point after that branch |
+| Consume completion | `Lqil;->t(Lqin;Landroid/view/MotionEvent;I)V` | Private/static status, register count, exact `qin.u(...)` call site, branch target after action dispatch, and try/catch coverage |
+
+The move method is a dispatcher over active `qin` sessions, so its loop registers cannot be assumed to match the pointer-owner method's register contract. The completion method is private static and is not exposed by the current pointer-owner transformation context. Both require independent shape verifiers and transactional preflight before mutation.
+
+### Required implementation order
+
+1. Read the target APK's DEX method definitions and code items for the three methods above. Do not infer access flags or register numbers from JADX Java output.
+2. Add explicit 18.5.4 method bindings and semantic shape checks. Fail closed if the method descriptors, access flags, register counts, key field references, cursor guard, or completion call sequence drift.
+3. Add a dedicated `qil` transformation that composes safely with the existing `qin` pointer-owner transformation. Preflight all target methods first, mutate a candidate class, verify the candidate, then commit.
+4. Add runtime ABI entries and the extension runtime only after the bytecode call sites and argument registers are proven.
+5. Add patch-shape tests for the exact stock sequence and for the inserted consume branch. Test the normal tap, both swipe directions, cursor movement, vertical movement, cancellation, and repeated pointer sessions.
+6. Build the extension and patch bundle; inspect the resulting DEX to ensure the branch lands after the stock completion cleanup and does not cross a try/catch boundary incorrectly.
+
+No executable patch is claimed at this stage. The next commit should be the verified `qil` bytecode preflight and shape tests, not a speculative runtime gesture implementation.
