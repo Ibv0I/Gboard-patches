@@ -74,8 +74,7 @@ public final class GboardSpacebarLanguageSwipeRuntime {
     public static void observePointer(Object owner, MotionEvent event, int pointerIndex) {
         if (owner == null) return;
         try {
-            if (event == null || pointerIndex < 0 || pointerIndex >= event.getPointerCount()
-                    || !Boolean.TRUE.equals(owner.getClass().getMethod("M").invoke(owner))) {
+            if (event == null || pointerIndex < 0 || pointerIndex >= event.getPointerCount()) {
                 observe(owner, Float.NaN, Float.NaN, true);
                 return;
             }
