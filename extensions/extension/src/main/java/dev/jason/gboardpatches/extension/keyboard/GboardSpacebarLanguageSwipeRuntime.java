@@ -94,7 +94,7 @@ public final class GboardSpacebarLanguageSwipeRuntime {
     /** Returning null consumes only the stock ActionDef; all other paths return it unchanged. */
     public static Object resolveAction(Object owner, Object stockAction,
             MotionEvent event, int actionIndex) {
-        if (owner == null || stockAction == null || event == null) return stockAction;
+        if (owner == null || event == null) return stockAction;
         final Session session;
         synchronized (SESSIONS) {
             session = SESSIONS.get(owner);
