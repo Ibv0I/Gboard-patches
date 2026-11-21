@@ -71,15 +71,16 @@ public final class GboardSpacebarLanguageSwipeRuntime {
     }
 
     /** Called after qin.t retargets the pointer and updates its coordinates. */
-    public static void observePointer(Object owner) {
+    public static void observePointer(Object owner, MotionEvent event, int pointerIndex) {
         if (owner == null) return;
         try {
-            if (!Boolean.TRUE.equals(owner.getClass().getMethod("M").invoke(owner))) {
-                clear(owner);
+            if (event == null || pointerIndex < 0 || pointerIndex >= event.getPointerCount()
+                    || !Boolean.TRUE.equals(owner.getClass().getMethod("M").invoke(owner))) {
+                observe(owner, Float.NaN, Float.NaN, true);
                 return;
             }
-            float x = field(owner, "d").getFloat(owner);
-            float y = field(owner, "e").getFloat(owner);
+            float x = event.getX(pointerIndex);
+            float y = event.getY(pointerIndex);
             Object cursor = field(owner, "q").get(owner);
             boolean cursorOwns = cursor != null && Boolean.TRUE.equals(
                     cursor.getClass().getMethod("c", float.class, float.class, boolean.class)
