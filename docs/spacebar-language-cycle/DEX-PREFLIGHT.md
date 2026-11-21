@@ -137,6 +137,19 @@ For up, keep the `qin.G(...)` trackpad decision untouched. Only after it returns
 
 These are source-confirmed lifecycle requirements. They do not yet constitute verified DEX instruction indices/register operands, so the feature remains disabled pending instruction-level decoding and candidate verification.
 
+## Clarified control-flow semantics from the complete decompiled methods
+
+The full source bodies were re-read against the APK-derived source archive. The following details are important when translating the source map into instruction-level hooks:
+
+- `qil.c(MotionEvent, boolean)` invokes `qin.F(event, pointerIndex)`, then obtains the action through `qin.l()`, and then invokes `qin.n(...)`. The spacebar check must therefore use the resolved `qin.e()` key code after `F`; the original `qin.m` view must be captured before subsequent move retargeting.
+- `qil.h(MotionEvent)` first invokes `qin.v(event)`, resolves the pointer index, invokes `qin.t(event,index)`, and then checks `qin.M()`. Only inside that gate does it evaluate the cursor/retarget condition. The observer must not run on the early-return paths from `qin.t`, nor when `qin.M()` is false.
+- The condition body is entered when `qin.m != previousSoftKeyView || qin.q == null || !qin.q.c(x,y,false)`. Therefore the extension observer belongs only on the taken/body path. The fall-through path is the path where the same view remains under the pointer and the cursor controller reports that it owns the pointer. Pass the runtime a cursor-owned flag consistent with that branch outcome.
+- `qil.i(MotionEvent)` distinguishes a valid pointer completion using `qin.O(event,index)`. When it returns false, the method calls `qin.A(eventTime,deviceId)` directly and never enters the normal `t(qin,...)` completion. This branch must clear the session; it must not attempt a language switch.
+- `qil.j(qin)` closes and pools the owner only when it is removed from the active set. Clear extension state before `qin.close()`/pool return, so a pooled `qin` object cannot inherit a stale gesture.
+- `qil.m()` resets each active owner through `qin.C()` and then removes it. It is an additional owner-wide teardown path; cleanup must be idempotent because it can overlap the per-owner reset path.
+
+No bytecode was changed in this audit. It narrows the control-flow predicates that the upcoming instruction-level composer must verify before mutating a candidate class.
+
 ## Generated target bindings and admission gate
 
 The repository's binding pipeline was inspected before adding any target
