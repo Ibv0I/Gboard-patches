@@ -30,6 +30,7 @@ import dev.jason.gboardpatches.patches.gboard.features.spacebarlogo.gboardSpaceb
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeGesturePatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipePointerPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeSoftKeyPatch
+import dev.jason.gboardpatches.patches.gboard.features.keyboard.gboardSpacebarLanguageCycleBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.zhuyinslide.gboardZhuyinSlidePointerAnchorPatch
 import dev.jason.gboardpatches.patches.gboard.features.zhuyinslide.gboardZhuyinSlideSoftKeyPatch
 import dev.jason.gboardpatches.patches.gboard.features.zhuyintraditionalsimplifiedtoggle.gboardZhuyinTraditionalSimplifiedToggleGesturePatch
@@ -137,6 +138,11 @@ internal object GboardContributionWiring {
                 "rounded_keyboard_panel.style",
             ) {
                 arrayOf(gboardRoundedKeyboardBytecodePatch)
+            },
+        ),
+        "spacebar_language_cycle" to listOf(
+            unit("spacebar_language_cycle.touch") {
+                arrayOf(gboardSpacebarLanguageCycleBytecodePatch)
             },
         ),
         "swipeable_custom_top_row" to listOf(
