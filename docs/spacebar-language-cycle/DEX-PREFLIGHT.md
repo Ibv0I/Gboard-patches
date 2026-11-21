@@ -117,3 +117,42 @@ method prototypes and register operands from the mutable DEX model, then
 preflight the complete transformed methods before committing any mutation.
 The feature must remain unregistered/unpublished until down, move, up and
 lifecycle paths are wired and the structural verification tests pass.
+
+## Generated target bindings and admission gate
+
+The repository's binding pipeline was inspected before adding any target
+entries. The source of truth is not the generated Kotlin file alone:
+
+1. `patches/src/main/resources/gboard/gboard-product-catalog.json`
+   declares the complete feature/contribution inventory and the required
+   binding keys for each contribution.
+2. `gboard-port-bundle.json` (when supplied to the build) admits a reviewed
+   subset of those contributions and exports evidence for every required
+   binding key.
+3. `gboard-version-bindings.json` must contain exactly the binding-key set
+   required by the selected admission. Extra keys are rejected just like
+   missing keys.
+4. `TargetBindingCompiler` verifies the profile and computes its canonical
+   source digest. `GboardTargetBuildCompiler` verifies the PortBundle digest,
+   catalog digest, profile/projection linkage, target version and profile
+   version before generating `GboardVersionBindings.kt` and
+   `GboardTargetAdmission.kt`.
+
+Consequently, adding `qil.c`, `qil.h`, and `qil.t` as arbitrary JSON
+properties is not a safe intermediate step. The product catalog, admitted
+contribution definitions, PortBundle binding exports, reviewed binding
+profile, and their linked SHA-256 values must be updated as one coherent
+reviewed target change. The profile's `projection_sha256` is checked against
+the compiler's canonical projection, while `profile_sha256` and
+`port_bundle_sha256` pin the external review artifacts.
+
+The implementation should therefore add a distinct touch-dispatch contribution
+for the spacebar gesture, with explicit required bindings for the three
+`qil` methods and the exact dependencies/runtime calls it needs. Its
+admission must remain pending until the matching APK evidence has been
+reviewed. The generated admission should not expose the feature until the
+down, move, up and lifecycle transformations are all present and validated.
+
+This is a build-pipeline constraint, not a claim that the bindings have been
+added. No binding profile, catalog, PortBundle or generated source was changed
+as part of this inspection.
