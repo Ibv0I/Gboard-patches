@@ -72,3 +72,48 @@ In particular, the `qil.h` observer must be inserted after the actual cursor-own
 - [ ] Test on the OnePlus 13T (not yet tested).
 
 No working patch is claimed until the remaining steps are complete.
+
+
+## APK verification: 18.5.4.993608717 arm64
+
+Verified against the uploaded APK (SHA-256
+`0bbc448e570f4042692c850f8b5a19458e009d245c5f099bff3c0415574c2402`).
+The archive contains four DEX files; the relevant `qil` and `qin` classes
+are in `classes.dex`.
+
+Source-level dispatch boundaries confirmed against the matching decompiled
+sources supplied with the APK:
+
+- `qil.c(MotionEvent, boolean): qin` is the touch-down path. It obtains the
+  pointer owner, records current coordinates/pressure, calls
+  `qin.F(MotionEvent, int)` to resolve the target `SoftKeyView`, then calls
+  `qin.n(...)` to arm the initial action.
+- `qin.F` calls `qin.B(SoftKeyView, float, float, long, int)` after hit
+  testing. `B` is therefore a target-retarget/reset routine, not a reliable
+  "new pointer down" signal: it is also reached from `qin.ab()` with a null
+  view during lifecycle reset. A swipe session must not be armed unconditionally
+  from `B`.
+- `qin.e()` returns the current primary action keycode; space is keycode 62.
+  This is a stronger semantic discriminator than matching a view label.
+- `qil.h(MotionEvent)` is the move path. It calls `qin.t(MotionEvent,int)`
+  before updating the current coordinates. Its cursor ownership gate is the
+  combined condition: active view unchanged, no `qsl` session, or
+  `qsl.c(x,y,false)` returns false. Movement observation must occur only on
+  the normal pointer-owned side of that gate.
+- `qil.t(qin, MotionEvent, int)` is the action-up path. It first checks
+  `qin.m()` and then `qin.G(...)`; only when the trackpad has not consumed
+  the event does it calculate and dispatch the normal action through
+  `qin.u(...)`. A successful spacebar swipe must suppress only that normal
+  action dispatch and retain the remainder of the cleanup and final
+  `qin.A(...)` call.
+- `qin.C()` is a reset path; `qin.s(long)` resets cursor/trackpad state.
+  Session cleanup must cover cancellation, reset, pointer replacement and
+  owner teardown, not only the ordinary up path.
+
+Important implementation constraint: the source-level findings above identify
+semantic insertion points, but do not by themselves authorize guessed DEX
+register numbers or instruction offsets. The patch must resolve the exact
+method prototypes and register operands from the mutable DEX model, then
+preflight the complete transformed methods before committing any mutation.
+The feature must remain unregistered/unpublished until down, move, up and
+lifecycle paths are wired and the structural verification tests pass.
