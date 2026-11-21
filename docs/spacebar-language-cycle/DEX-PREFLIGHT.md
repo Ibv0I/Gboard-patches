@@ -9,13 +9,13 @@ This document records the bytecode facts verified against the supplied APK. It i
 
 | Role | DEX method | Access flags | Registers | Incoming words | Outgoing words | Try blocks |
 |---|---|---:|---:|---:|---:|---:|
-| Capture original down-view | `Lqin;->B(Lcom/google/android/libraries/inputmethod/widgets/SoftKeyView;FFJI)V` | `0x10` final | 21 | 7 | 14 | 0 |
+| Begin pointer dispatch | `Lqil;->c(Landroid/view/MotionEvent;Z)Lqin;` | public final | verified from matching source |
 | Observe move | `Lqil;->h(Landroid/view/MotionEvent;)V` | `0x11` public final | 12 | 2 | 8 | 2 |
 | Consume pointer-up action | `Lqil;->t(Lqin;Landroid/view/MotionEvent;I)V` | `0x0a` private static | 16 | 3 | 10 | 1 |
 
 ## Verified call-site anchors
 
-- `qin.B` is in `classes2.dex`. It calls `qin.r(JI)` at code-unit offset `0x0c`, then `qin.ac()` at `0x0f`, before the new SoftKeyView is stored. The original view parameter is therefore available at pointer-session creation, before stock retargeting.
+- `qil.c(MotionEvent,boolean)` is the down-dispatch method in `classes.dex`. It obtains the `qin` pointer owner, writes the initial coordinates, calls `qin.F(MotionEvent,int)` for hit testing, and then arms the initial action through `qin.n(...)`. The safe begin hook is after `qin.F` and before `qin.n`, guarded by `qin.e() == 62`; do not use `qin.B` as a down hook because it is also reached with a null view during reset.
 - `qil.h` is in `classes.dex`. It calls `qin.t(MotionEvent,int)` at `0x2b`. The stock cursor ownership predicate `qsl.c(float,float,boolean)` is called at `0x64`. A custom observer must be placed after the predicate's branch has been evaluated, not merely after the invoke.
 - `qil.t` is in `classes.dex`. The normal action call `qin.u(...)` is an `invoke-virtual/range` at code-unit offset `0x73`, using ten register words beginning at `v3`. The next instruction starts at `0x76` and continues the stock completion path.
 
@@ -65,7 +65,7 @@ In particular, the `qil.h` observer must be inserted after the actual cursor-own
 - [x] Access flags, register counts, incoming/outgoing words, and try-block counts verified.
 - [x] Cursor predicate and stock action call-site offsets recorded.
 - [x] Gboard's internal next-language action identified.
-- [ ] Add generated version bindings for `qil.h` and `qil.t`.
+- [ ] Add generated version bindings for `qil.c`, `qil.h`, and `qil.t`.
 - [ ] Implement fail-closed semantic shape verifiers and candidate-class preflight.
 - [ ] Add runtime gesture state and ABI calls.
 - [ ] Build and inspect the patched bundle.
