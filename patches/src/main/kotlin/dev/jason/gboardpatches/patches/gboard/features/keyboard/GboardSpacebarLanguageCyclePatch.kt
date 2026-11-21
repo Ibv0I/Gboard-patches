@@ -120,7 +120,16 @@ private data class Methods(
         down.addInstructions(0, RuntimeCallEmitter.invoke(CLEAR_ALL, ""))
 
         val moveSite = callSite(move, GboardVersionBindings.qinPointerMove.reference)
-        move.addInstructions(moveSite.index + 1, RuntimeCallEmitter.invoke(OBSERVE, "v${moveSite.registers[0]}"))
+        check(moveSite.registers.size == 3) {
+            "Unexpected qin.t(MotionEvent,int) MOVE register shape: ${moveSite.registers}"
+        }
+        move.addInstructions(
+            moveSite.index + 1,
+            RuntimeCallEmitter.invoke(
+                OBSERVE,
+                "v${moveSite.registers[0]}, v${moveSite.registers[1]}, v${moveSite.registers[2]}",
+            ),
+        )
 
         val upSite = callSite(up, GboardVersionBindings.qinPointerDispatchAction.reference)
         val ownerReg = "v${upSite.registers[0]}"
