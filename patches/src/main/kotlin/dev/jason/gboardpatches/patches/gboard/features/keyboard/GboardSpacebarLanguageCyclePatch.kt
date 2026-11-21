@@ -21,6 +21,7 @@ private val OBSERVE = RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER
 private val RESOLVE = RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_RESOLVE_ACTION
 private val CLEAR = RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_CLEAR
 private val CLEAR_ALL = RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL
+private val CLEAR_ON_CANCEL = RuntimeCallId.SPACEBAR_LANGUAGE_SWIPE_CLEAR_ON_CANCEL
 
 internal val gboardSpacebarLanguageCycleBytecodePatch = bytecodePatch(
     description = "Detect horizontal spacebar swipes and rotate Gboard's configured input layout.",
@@ -69,6 +70,7 @@ private data class Methods(
     val up: MutableMethod,
     val reset: MutableMethod,
     val close: MutableMethod,
+    val cancel: MutableMethod,
     val hitTest: MutableMethod,
     val pointerMove: MutableMethod,
     val pointerClear: MutableMethod,
@@ -81,6 +83,7 @@ private data class Methods(
             up to listOf(RESOLVE),
             reset to listOf(CLEAR_ALL),
             close to listOf(CLEAR_ALL),
+            cancel to listOf(CLEAR_ON_CANCEL),
             pointerClear to listOf(CLEAR),
         )
         var seen = 0
@@ -100,7 +103,7 @@ private data class Methods(
     }
 
     fun validateStock() {
-        for (m in listOf(down, move, up, reset, close, hitTest, pointerMove, pointerClear, actionDispatch)) {
+        for (m in listOf(down, move, up, reset, close, cancel, hitTest, pointerMove, pointerClear, actionDispatch)) {
             check(m.implementation != null && (m.accessFlags and AccessFlags.ABSTRACT.value) == 0) {
                 "Missing or abstract DEX method ${m.definingClass}->${m.name}"
             }
@@ -111,6 +114,9 @@ private data class Methods(
         callSite(down, GboardVersionBindings.qinPointerHitTest.reference)
         callSite(move, GboardVersionBindings.qinPointerMove.reference)
         check(callSite(up, GboardVersionBindings.qinPointerDispatchAction.reference).registers.size == 10)
+        check(cancel.parameterTypes == listOf("Landroid/view/MotionEvent;")) {
+            "Unexpected qil.i(MotionEvent) cancel signature"
+        }
         check(pointerClear.parameterTypes == listOf("J", "I"))
     }
 
@@ -143,6 +149,7 @@ private data class Methods(
         pointerClear.addInstructions(0, RuntimeCallEmitter.invoke(CLEAR, "p0"))
         reset.addInstructions(0, RuntimeCallEmitter.invoke(CLEAR_ALL, ""))
         close.addInstructions(0, RuntimeCallEmitter.invoke(CLEAR_ALL, ""))
+        cancel.addInstructions(0, RuntimeCallEmitter.invoke(CLEAR_ON_CANCEL, "p1"))
     }
 
     fun validatePatched() {
@@ -150,6 +157,9 @@ private data class Methods(
         check(count(move, OBSERVE) == 1 && count(up, RESOLVE) == 1)
         check(count(pointerClear, CLEAR) == 1)
         check(count(reset, CLEAR_ALL) == 1 && count(close, CLEAR_ALL) == 1)
+        check(count(cancel, CLEAR_ON_CANCEL) == 1)
+
+        check(cancel.implementation!!.instructions.first().isMethodReference(CLEAR_ON_CANCEL.encodedAbi))
 
         val di = down.implementation!!.instructions
         val dc = di.indexOfFirst { it.isMethodReference(CLEAR_ALL.encodedAbi) }
@@ -185,6 +195,7 @@ private data class Methods(
                 q(GboardVersionBindings.qilActionUp),
                 q(GboardVersionBindings.qilPointerReset),
                 q(GboardVersionBindings.qilPointerClose),
+                q(GboardVersionBindings.qilPointerCancel),
                 n(GboardVersionBindings.qinPointerHitTest),
                 n(GboardVersionBindings.qinPointerMove),
                 n(GboardVersionBindings.qinPointerClear),
