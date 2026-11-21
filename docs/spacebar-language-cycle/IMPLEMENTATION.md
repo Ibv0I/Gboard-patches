@@ -5,36 +5,71 @@ Verified target APK: `18.5.4.993608717-release-arm64-v8a`
 
 ## Requested behavior
 
-- A horizontal swipe that starts on the space bar advances to the next enabled keyboard language/layout.
-- The swipe direction does not select a fixed language. It always invokes the next-language action, cycling through the configured layouts.
+- A horizontal swipe that starts on the space bar advances to the next enabled Gboard language/layout.
+- Swipe direction is ignored; either direction invokes the same next-language action.
 - A normal short tap still inserts a space.
 - Existing long-press spacebar cursor/trackpad behavior must remain available.
 - Only a horizontal gesture past a movement threshold is consumed.
 
 ## Current status
 
-This branch is an implementation work branch. The gesture behavior is specified, but the APK-specific bytecode target and the actual Gboard next-language method still need to be identified from the supplied APK before a runtime patch is safe to implement.
+The supplied JADX `sources.zip` has been extracted and inspected. The correct built-in Gboard language-switch path has been identified. The gesture interception point is narrowed to the `qin` pointer session, but no runtime patch has been implemented or built yet.
 
-Do not merge or ship a no-op/placeholder implementation as a working patch.
+Do not ship this as a working patch until the exact DEX transformation is implemented, bundle validation passes, and the target APK is tested on-device.
 
-## Investigation checklist
+## Confirmed next-language implementation
 
-1. Decompile all DEX files for the exact target APK and inspect the spacebar soft-key / pointer-owner / gesture dispatch paths.
-2. Find Gboard's internal action for advancing to the next input subtype/layout (not a hard-coded RU or EN target).
-3. Trace how the existing cursor trackpad gesture claims and cancels a spacebar pointer session; make sure horizontal swipes can be distinguished without breaking long-press editing.
-4. Add version bindings and an exact, verified bytecode transformation.
-5. Add a runtime extension that recognizes a horizontal swipe on the spacebar, calls Gboard's next-layout action once per completed swipe, and safely resets/cancels the session.
-6. Add patch metadata, settings (enable/disable and threshold if practical), and source-contract/runtime tests.
-7. Build the patch bundle against the target APK and test on-device.
+### `pvd` — built-in SwitchLanguage action
 
-## Gesture policy
+The Gboard module `defpackage/pvd.java` handles the internal action:
 
-The runtime should track the initial down coordinates and elapsed time for a spacebar-owned pointer session. It should arm only after horizontal displacement exceeds the configured threshold and dominates vertical displacement. It must not claim a simple tap. It must not arm a long-press cursor-trackpad session. Upon completion, it should dispatch exactly one "next input language/layout" action irrespective of swipe direction, then clear all session state. Cancellation, pointer reset, window detach, and keyboard teardown must also clear state.
+- Action code `-10011`: `SWITCH_TO_NEXT_LANGUAGE`.
+- Action code `-10197`: `SWITCH_TO_NEXT_LANGUAGE_ALLOWING_OTHER_IMES`.
 
+For `-10011`, `pvd.m(ohe)` calls:
 
-## Findings from the repository's 18.5.4 binding catalog
+```java
+pga pgaVarF = pga.F(ac());
+if (pgaVarF.t(true, pfi.d)) {
+    return;
+}
+```
 
-The current `gboard-version-bindings.json` already contains these verified pointer-owner targets for Gboard 18.5.4:
+The second action calls `t(false, pfi.d)` and may allow switching to another IME. The desired action is therefore `-10011` / `t(true, pfi.d)`, not `switchToNextInputMethod()`.
+
+### `pga` — language entry rotation
+
+`pga.t(boolean, pfi)` is `InputMethodEntryManager.switchToNextInputMethodEntry`. It obtains the current `pev` entry, asks the dynamic rotation list `this.Y` for the next entry, and applies it through `l(pev, pfi)`.
+
+The `pev` entry exposes a language tag through `i()` and a layout-related identifier through `q()`. The static table in `pga` includes `ru -> russian`. This supports that the manager rotates language/layout entries, not merely external IMEs.
+
+### Invocation options
+
+- `pvd` is the existing action handler and is the authoritative behavior for action `-10011`.
+- `pvi.a()` also calls `pga.t(true, pfi.e)`, but is a shortcut registration path and uses a different `pfi` source.
+- For a patch inside the pointer handler, direct invocation of `pga.F(context).t(true, pfi.d)` is a candidate, but must be checked against the module action's metrics/side effects and lifecycle. Prefer reusing the existing action dispatch if it can be reached safely.
+
+## Confirmed pointer / spacebar path
+
+### `qip` and `qin`
+
+- `qip.b(MotionEvent, int)` creates a `qin` pointer session and stores initial pointer coordinates.
+- `qin.B(SoftKeyView, ...)` assigns the active key view to `qin.m`.
+- `qin.d()` returns `this.m.getId()` for the active key.
+- The spacebar view is identified in the UI by `R.id.key_pos_space`.
+- `qin.m()` returns the active `SoftKeyDef`.
+- `qin.t(MotionEvent, int)` is the move handler. It measures normalized horizontal/vertical displacement from the initial down point, consults the active key definition, and has a cursor/trackpad guard involving `qsl`.
+- `qil` dispatches move events to `qin.t` and on pointer-up classifies the gesture, selects an `ActionDef`, and calls `qin.u(...)`.
+
+### Cursor behavior guard
+
+The move handler checks `this.q` (a `qsl` cursor/trackpad session). If that session is active and its state says the gesture should remain owned by the cursor controller, `qin.t` returns early. This guard must not be bypassed by the new gesture.
+
+The `qin` class also tracks the active key and initial coordinates. A safe implementation should only arm for a pointer whose active view ID is `R.id.key_pos_space`, only after a horizontal threshold is crossed, and only when no cursor/trackpad session has claimed the pointer. It must consume exactly once and reset its state on finish/cancel/reset.
+
+## Existing binding catalog
+
+The current `gboard-version-bindings.json` contains these Gboard 18.5.4 bindings:
 
 - `pointer_owner`: `Lqin;->B(Lcom/google/android/libraries/inputmethod/widgets/SoftKeyView;F F J I)V`
 - `pointer_finish`: `Lqin;->r(J I)V`
@@ -42,19 +77,17 @@ The current `gboard-version-bindings.json` already contains these verified point
 - `pointer_reset`: `Lqin;->C()V`
 - `pointer_pre_reset`: `Lqin;->ac()V`
 
-The catalog also has `latin_globe_factory` (`LatinIme->N()`) but does not currently expose a verified spacebar-specific next-layout action. These pointer methods are promising interception points, not proof that a completed horizontal swipe can safely consume the spacebar session.
+These identify the pointer lifecycle but are not themselves a completed patch.
 
-## APK analysis status
+## Next implementation checks
 
-The supplied APK was inspected as an archive and contains `classes.dex` through `classes4.dex`. The current working environment has Java 21 but no JADX, apktool, baksmali, or dexdump executable, and cannot download release binaries. Therefore the DEX methods have not yet been decompiled here. Do not infer the next-language method from the pointer bindings alone.
+1. Inspect the complete `qil` touch dispatch sequence and the exact `qin` pointer-up/cancel lifecycle.
+2. Confirm how the `SoftKeyView` ID is preserved when the pointer moves outside the spacebar.
+3. Determine whether horizontal cursor movement on the spacebar uses the same `qsl` session, and ensure the new gesture never takes ownership after that session starts.
+4. Inspect the patch framework's smali transformation conventions and version-binding schema.
+5. Implement the smallest bytecode patch for the exact 18.5.4 target. Avoid patching `pad.java`; it is the Smart Compose swipe extension, not the language switch handler.
+6. Build and validate the patch bundle, then test tap, left/right swipe, long-press cursor movement, pointer cancellation, and layouts with more than two languages on-device.
 
-For local analysis on Windows, download the JADX command-line ZIP from the official releases page:
-https://github.com/skylot/jadx/releases/latest
+## Gesture policy
 
-Then run (adjust the JADX folder path if needed):
-
-```powershell
-& "C:\Tools\jadx\bin\jadx.bat" -d "$env:USERPROFILE\Desktop\gboard-src" "C:\path\to\Google+Gboard+18.5.4.993608717-release-arm64-v8a.apk"
-```
-
-After decompilation, search the output for `switchToNextInputMethod`, `setInputMethodAndSubtype`, `InputMethodManager`, `spacebar`, `pointer_owner`, `cursor`, and `LatinIme`. The most useful output to provide is the decompiled classes around `Lqin` (pointer owner) and the class that handles globe/language switching. If JADX cannot decompile a method, provide its corresponding smali instead.
+Track the initial down point for a spacebar-owned pointer. Arm only after horizontal displacement exceeds a configurable or conservative threshold and clearly dominates vertical displacement. Direction is ignored. Do not trigger on a tap, on vertical movement, or after cursor/trackpad mode has claimed the pointer. Dispatch one next-language action per gesture. Clear all state on finish, cancel, reset, pointer replacement, and keyboard teardown.
