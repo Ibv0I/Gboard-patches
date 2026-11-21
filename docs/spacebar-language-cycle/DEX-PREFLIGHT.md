@@ -118,6 +118,25 @@ preflight the complete transformed methods before committing any mutation.
 The feature must remain unregistered/unpublished until down, move, up and
 lifecycle paths are wired and the structural verification tests pass.
 
+## Lifecycle path audit (matching source archive)
+
+The lifecycle source audit adds the following exact cleanup points to the earlier method map:
+
+- `qil.i(MotionEvent)` resolves the pointer owner by pointer ID. If `qin.O(...)` rejects the pointer-up/cancel event, it calls `qin.A(...)` instead of the ordinary `t(qin,...)` completion path. The touch-dispatch patch must clear the swipe session on this branch; otherwise a cancelled gesture could remain armed.
+- `qil.j(qin)` removes an owner from the active-owner collection, calls `qin.close()`, and returns the owner to the pool. Any extension state keyed by that owner must be cleared before it can be reused.
+- `qin.C()` calls `qin.s(0L)` and then `ac()`; `qin.s(long)` resets the native cursor/trackpad controller and the trackpad-active flag. The extension clear must be attached to the reset lifecycle, not to `qin.B`.
+- `qin.ab()` calls `B(null,...)`, and `B` runs `ac()`. This confirms why `B` cannot serve as a begin hook: it is also part of reset/retarget behavior and can receive a null view.
+
+For the down hook, capture the actual `qin.m` view only after `qin.F(MotionEvent,int)` has completed hit testing, and only if `qin.e() == 62`. Keep that captured reference for the later finish call; do not substitute the potentially retargeted `qin.m` at pointer-up.
+
+For move, insert the observer only in the normal pointer-owned branch after the complete condition
+`qin.m != previousView || qin.q == null || !qsl.c(x,y,false)`
+has been evaluated. The extension's `cursorOwnsPointer` argument must represent the negation of that complete condition's normal-ownership decision, not merely whether `qin.q` is non-null.
+
+For up, keep the `qin.G(...)` trackpad decision untouched. Only after it returns false may the extension finish run. If finish returns true, branch over exactly the ordinary `qin.u(...)` invocation while retaining the following stock action bookkeeping, delayed-action handling, trace-finally path, and final owner cleanup. The cancel path in `qil.i` must clear rather than finish.
+
+These are source-confirmed lifecycle requirements. They do not yet constitute verified DEX instruction indices/register operands, so the feature remains disabled pending instruction-level decoding and candidate verification.
+
 ## Generated target bindings and admission gate
 
 The repository's binding pipeline was inspected before adding any target
