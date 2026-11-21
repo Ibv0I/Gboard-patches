@@ -7,7 +7,7 @@ internal enum class RuntimeCallId(internal val encodedAbi: String) {
     SPACEBAR_LANGUAGE_SWIPE_FINISH("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->finish(Ljava/lang/Object;Ljava/lang/Object;)Z"),
     SPACEBAR_LANGUAGE_SWIPE_CLEAR("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clear(Ljava/lang/Object;)V"),
     SPACEBAR_LANGUAGE_SWIPE_BEGIN_FROM_DOWN("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->beginFromSpacebar(Ljava/lang/Object;)V"),
-    SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->observePointer(Ljava/lang/Object;)V"),
+    SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->observePointer(Ljava/lang/Object;Landroid/view/MotionEvent;I)V"),
     SPACEBAR_LANGUAGE_SWIPE_RESOLVE_ACTION("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->resolveAction(Ljava/lang/Object;Ljava/lang/Object;Landroid/view/MotionEvent;I)Ljava/lang/Object;"),
     SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clearAll()V"),
     LANGUAGE_MODELS_RUNTIME_APPLY_FLAG_VALUE("Ldev/jason/gboardpatches/extension/languagemodels/GboardLanguageModelRuntime;->applyOverriddenFlagValue(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
