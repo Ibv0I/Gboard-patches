@@ -91,3 +91,48 @@ These identify the pointer lifecycle but are not themselves a completed patch.
 ## Gesture policy
 
 Track the initial down point for a spacebar-owned pointer. Arm only after horizontal displacement exceeds a configurable or conservative threshold and clearly dominates vertical displacement. Direction is ignored. Do not trigger on a tap, on vertical movement, or after cursor/trackpad mode has claimed the pointer. Dispatch one next-language action per gesture. Clear all state on finish, cancel, reset, pointer replacement, and keyboard teardown.
+
+
+## Detailed touch-dispatch findings (18.5.4)
+
+### `qil` dispatch
+
+- `qil.h(MotionEvent)` is the move dispatcher. For every active pointer owner in `qip.b`, it calls `qin.t(event, pointerIndex)` first.
+- After `qin.t`, it checks `qin.M()` and updates coordinates/history. If the active key view changed, or the cursor session does not claim the current coordinates, it resolves a gesture action with `qin.h(...)` and dispatches it through `qin.n(...)`.
+- `qil.i(MotionEvent)` handles pointer-up/pointer-index-up. It finds the matching `qin`; if `qin.O(...)` is true it calls the private `qil.t(qin, event, index)` completion routine. Otherwise it calls `qin.A(...)` to end the session.
+- The completion routine `qil.t(...)` obtains the active `SoftKeyDef`, classifies the final gesture, resolves an `ActionDef`, and calls `qin.u(...)`. This is where a short space tap remains a normal key action.
+- `qil` teardown loops active sessions, calls `qin.r(...)`, then `qin.C()`; pointer cancellation/reset must clear any extension state too.
+
+### `qin.t(MotionEvent, int)` movement behavior
+
+- It starts only when `M()` says there is an active enabled soft key.
+- It preserves existing early exits for a key with `g` when `this.t` is false, and for an active cursor session `this.q` whose controller reports that it still owns the gesture.
+- It computes normalized displacement from the initial down point: `abs(dx) / keyBounds.width` and `abs(dy) / keyBounds.height`.
+- Horizontal and vertical directions are recognized separately through the current `SoftKeyDef` actions. A direction is considered only when its displacement dominates the other axis.
+- Once a direction is recognized, `this.H` is set and `F(event,index)` may retarget the active key view. This means the current `qin.m` is not necessarily the original spacebar after the pointer leaves its bounds.
+
+### Implication for a safe spacebar gesture
+
+Do not merely test `qin.d() == R.id.key_pos_space` at pointer-up: after movement, `qin.m` can be retargeted to a neighboring key. The extension must capture the original down/owner view at the start of the pointer session and retain that identity independently.
+
+Do not suppress the stock move handler before it gets a chance to service `this.q`. A safe runtime should:
+1. Capture that the pointer began on `R.id.key_pos_space` using the original `SoftKeyView` argument to `qin.B(...)`.
+2. Leave all stock cursor/trackpad guards intact.
+3. Arm only after a horizontal displacement threshold is exceeded and dominates vertical displacement.
+4. Ensure the cursor controller has not claimed the session; if it has, abandon the custom gesture.
+5. On pointer finish, dispatch the next-language action once only if armed; otherwise allow the stock completion path (short tap / normal key behavior).
+6. Clear state on pointer cancel and reset.
+
+The exact best hook is still under evaluation. Existing top-row swipe code demonstrates the project's supported pointer-owner delegate pattern and runtime ABI calls, but its owner-retarget behavior cannot be copied blindly because this feature must preserve the original spacebar identity and coexist with the cursor trackpad.
+
+## Patch-framework patterns found in this fork
+
+- Existing pointer-owner transformations are composed through `GboardPointerOwnerTransformationAdapter` and `GboardPointerOwnerFeatureSpec`.
+- The top-row swipe patch inserts a runtime delegate into the pointer-owner method and hooks finish/cancel/reset for session cleanup.
+- Long-press quick actions also delegates from pointer-owner and finish/cancel/reset lifecycle methods.
+- The pointer-owner stock contract and register mapping are centrally validated. A new feature must participate in this composition rather than patching the same method independently.
+- Runtime calls are emitted through `RuntimeCallEmitter` and registered in the runtime ABI catalog/inventory. A patch cannot safely call arbitrary Kotlin code unless its runtime artifact is packaged and its ABI entry is declared.
+
+## Current conclusion
+
+The language-switch target is confirmed, and the event lifecycle is now mapped. The remaining design risk is preserving the original spacebar owner while distinguishing a normal horizontal swipe from the cursor trackpad. No DEX patch has been committed yet.
