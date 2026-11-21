@@ -1,7 +1,7 @@
 {
   "$schema": "gboard-port-product-catalog.schema.json",
   "format": "gboard-port-product-catalog.v1",
-  "catalog_version": "1.21.0",
+  "catalog_version": "1.22.0",
   "composition": {
     "selected_only_call_chain": true,
     "runtime_feature_mask": false
@@ -196,6 +196,15 @@
     "pointer_owner_type": "type",
     "pointer_pre_reset": "method",
     "pointer_reset": "method",
+    "qil_action_up": "method",
+    "qil_pointer_close": "method",
+    "qil_pointer_down": "method",
+    "qil_pointer_move": "method",
+    "qil_pointer_reset": "method",
+    "qin_pointer_clear": "method",
+    "qin_pointer_dispatch_action": "method",
+    "qin_pointer_hit_test": "method",
+    "qin_pointer_move": "method",
     "rambler_selector_create": "method",
     "rambler_selector_default": "method",
     "rambler_selector_layout": "method",
@@ -1884,6 +1893,47 @@
             "CALCULATOR_RUNTIME_ON_INPUT_VIEW_STARTED",
             "CALCULATOR_RUNTIME_ON_SELECTION_UPDATED",
             "CALCULATOR_RUNTIME_ON_INPUT_WINDOW_HIDDEN"
+          ]
+        }
+      ]
+    },
+    {
+      "feature_id": "spacebar_language_cycle",
+      "public_patch_name": "Spacebar Language Cycle",
+      "feature_marker": "dev.jason.gboardpatches.feature.spacebar_language_cycle",
+      "target_family_ids": [
+        "pointer.lifecycle"
+      ],
+      "migration_scope": "version-sensitive",
+      "consumer_files": [
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/keyboard/GboardSpacebarLanguageCyclePatch.kt",
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardPatchRegistry.kt",
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardContributionWiring.kt",
+        "extensions/extension/src/main/java/dev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime.java"
+      ],
+      "contributions": [
+        {
+          "contribution_id": "spacebar_language_cycle.touch",
+          "anchor_family_id": "dedicated_bytecode",
+          "phase": "dedicated",
+          "order": 300,
+          "required_bindings": [
+            "qil_action_up",
+            "qil_pointer_close",
+            "qil_pointer_down",
+            "qil_pointer_move",
+            "qil_pointer_reset",
+            "qin_pointer_clear",
+            "qin_pointer_dispatch_action",
+            "qin_pointer_hit_test",
+            "qin_pointer_move"
+          ],
+          "runtime_calls": [
+            "SPACEBAR_LANGUAGE_SWIPE_BEGIN_FROM_DOWN",
+            "SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER",
+            "SPACEBAR_LANGUAGE_SWIPE_RESOLVE_ACTION",
+            "SPACEBAR_LANGUAGE_SWIPE_CLEAR",
+            "SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL"
           ]
         }
       ]
