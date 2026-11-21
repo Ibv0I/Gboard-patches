@@ -254,3 +254,52 @@ The instruction streams in the code items above were decoded to identify invoke 
 
 These anchors show that the UP completion call at `qil.t` is at instruction offset 56, and the normal action dispatch is at offset 115. They also show the reset and pooling call sites. They do **not** by themselves authorize insertion: the implementation must still decode and validate all branch targets and try/catch ranges, preserve the stock trackpad branch, and reserve scratch registers safely. In particular, the invoke at `qil.t:56` is the native `G` gate, not the action dispatch; the extension's finish decision must be placed only on its false-return path, before the `qin.u` dispatch at offset 115.
 
+
+
+## Verified control-flow and exception ranges (18.5.4 APK)
+
+The following offsets are code-unit offsets in the original instruction array. Conditional and unconditional branch targets below were decoded from the DEX instruction operands, not inferred from decompiled Java.
+
+### Completion and cancellation
+
+- `qil.i(MotionEvent)`:
+  - offset 18 branches to 41 when the pointer owner lookup returns null.
+  - offset 20 calls `qin.O(MotionEvent,int)`.
+  - offset 24 branches to 30 when `O` is false.
+  - offset 26 calls `qil.t(qin,MotionEvent,int)` only when `O` is true.
+  - offset 29 jumps to 41 after normal completion.
+  - offset 30 onward is the alternate `qin.A(long,int)` path; this is the cancellation/rejection path and must clear, never finish, a swipe session.
+  - offset 42 branches to 47 for the action-masked check; offset 44 calls `qip.c()` on the matching branch.
+  - No try items are present in this method.
+- `qil.j(qin)`:
+  - offset 8 branches to 18 when the owner is not found in the active collection.
+  - offset 10 calls `qin.close()` on the removal path.
+  - No try items are present in this method.
+
+### UP handler: `qil.t(qin,MotionEvent,int)`
+
+- offset 5 begins the owner's event update; the method has one try item covering code units [5,254), with a catch-all handler at 269.
+- offset 14 branches to 19 if the pointer index is valid; offset 17 otherwise jumps to 254, the trace-finally path.
+- offset 50 reads the current `SoftKeyDef`; offset 54 branches back to 16 when it is null.
+- offset 56 invokes `qin.G(MotionEvent,SoftKeyDef,int,int)`.
+- offset 60 branches back to 16 when `G` returns true. This is the native trackpad/cursor-owned path and must remain untouched.
+- When `G` returns false, execution falls through at 62 into the normal action-resolution path. The extension finish decision belongs on this false-return path, before the normal `qin.u(...)` action dispatch at offset 115.
+- A successful extension finish may skip only the stock `qin.u(...)` dispatch. It must rejoin the existing bookkeeping/delayed-action/trace cleanup flow; it must not bypass the catch-all handler or trace end.
+- The final trace end is at offset 254; the normal return is at 268. The catch-all handler begins at 269 and rethrows after ending the trace.
+
+### DOWN and MOVE handler exception ranges
+
+- `qil.c(MotionEvent,boolean)` has one try item covering [26,86), with catch-all handler at 129.
+- `qil.h(MotionEvent)` has two try items: [26,35) and [41,338), both using the catch-all handler at 340.
+- `qil.i` and `qil.j` have no try items.
+- Do not insert instructions inside protected ranges without updating their try ranges and handler offsets. Any insertion must also preserve branch targets and the original handler/finally structure.
+
+### Reset and owner reuse anchors
+
+- `qil.m()` invokes `qin.C()` at offset 32.
+- `qin.close()` invokes `qin.C()` at offset 0.
+- `qin.C()` invokes `qin.s(long)` at offset 2 and `qin.ac()` at offset 5.
+- `qin.s(long)` invokes `qsl.a(long)` at offset 4 and `qio.k()` at offset 9.
+- `qin.A(long,int)` invokes `qio.p(qin)` at offset 2, `qin.r(long,int)` at offset 5, and `qin.ac()` at offset 8.
+
+These facts establish semantic insertion regions but are not yet a transformation specification: register read/write liveness, exact branch conditions, try-handler relocation, and post-transform structural fingerprints must still be validated before bytecode mutation is enabled.
