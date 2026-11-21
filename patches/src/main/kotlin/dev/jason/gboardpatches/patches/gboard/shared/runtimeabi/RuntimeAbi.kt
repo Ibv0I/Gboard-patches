@@ -10,6 +10,7 @@ internal enum class RuntimeCallId(internal val encodedAbi: String) {
     SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->observePointer(Ljava/lang/Object;Landroid/view/MotionEvent;I)V"),
     SPACEBAR_LANGUAGE_SWIPE_RESOLVE_ACTION("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->resolveAction(Ljava/lang/Object;Ljava/lang/Object;Landroid/view/MotionEvent;I)Ljava/lang/Object;"),
     SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clearAll()V"),
+    SPACEBAR_LANGUAGE_SWIPE_CLEAR_ON_CANCEL("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clearOnCancel(Landroid/view/MotionEvent;)V"),
     LANGUAGE_MODELS_RUNTIME_APPLY_FLAG_VALUE("Ldev/jason/gboardpatches/extension/languagemodels/GboardLanguageModelRuntime;->applyOverriddenFlagValue(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
     LANGUAGE_MODELS_RUNTIME_RESTRICT_NWP_CACHED_PACK("Ldev/jason/gboardpatches/extension/languagemodels/GboardLanguageModelRuntime;->restrictNwpCachedPack(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
     LANGUAGE_MODELS_RUNTIME_AFTER_HMM_ENROLL("Ldev/jason/gboardpatches/extension/languagemodels/GboardLanguageModelRuntime;->afterHmmEnroll(Ljava/lang/Object;Ljava/lang/String;Z)V"),
