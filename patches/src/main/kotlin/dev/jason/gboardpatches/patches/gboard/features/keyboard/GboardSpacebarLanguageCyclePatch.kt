@@ -101,11 +101,11 @@ private data class Methods(
 
     fun validateStock() {
         for (m in listOf(down, move, up, reset, close, hitTest, pointerMove, pointerClear, actionDispatch)) {
-            check(m.implementation != null && m.accessFlags and AccessFlags.ABSTRACT.value == 0) {
+            check(m.implementation != null && (m.accessFlags and AccessFlags.ABSTRACT.value) == 0) {
                 "Missing or abstract DEX method ${m.definingClass}->${m.name}"
             }
         }
-        check(up.accessFlags and AccessFlags.STATIC.value != 0)
+        check((up.accessFlags and AccessFlags.STATIC.value) != 0)
         check(up.parameterTypes == listOf(QIN, "Landroid/view/MotionEvent;", "I"))
         check(actionDispatch.parameterTypes.firstOrNull() == ACTION_DEF_TYPE)
         callSite(down, GboardVersionBindings.qinPointerHitTest.reference)
