@@ -188,3 +188,27 @@ down, move, up and lifecycle transformations are all present and validated.
 This is a build-pipeline constraint, not a claim that the bindings have been
 added. No binding profile, catalog, PortBundle or generated source was changed
 as part of this inspection.
+
+## APK DEX code-item inventory (18.5.4 arm64 target)
+
+The supplied APK was unpacked and the DEX header/class-data/method-id tables were parsed locally. This establishes concrete code-item locations and register/insn counts for the target methods; it is not yet a full instruction disassembly or a mutation anchor.
+
+APK SHA-256: `0bbc448e570f4042692c850f8b5a19458e009d245c5f099bff3c0415574c2402`.
+
+| DEX | Class/method | Prototype | Code item offset | Registers | Insn code units |
+|---|---|---|---:|---:|---:|
+| classes.dex | `Lqil;->c` | `(MotionEvent,Z)qin` | `0x5209b4` | 12 | 135 |
+| classes.dex | `Lqil;->h` | `(MotionEvent)V` | `0x520c54` | 12 | 347 |
+| classes.dex | `Lqil;->i` | `(MotionEvent)V` | `0x520f30` | 7 | 48 |
+| classes.dex | `Lqil;->j` | `(qin)V` | `0x520ff0` | 3 | 19 |
+| classes.dex | `Lqil;->t` | `(qin,MotionEvent,I)V` | `0x521088` | 16 | 275 |
+| classes.dex | `Lqil;->m` | `()V` | `0x34966c` | 7 | 43 |
+| classes2.dex | `Lqin;->A` | `(J,I)V` | `0x5eb01c` | 5 | 28 |
+| classes2.dex | `Lqin;->C` | `()V` | `0x5eb164` | 3 | 9 |
+| classes2.dex | `Lqin;->close` | `()V` | `0x5ea8f4` | 3 | 20 |
+| classes2.dex | `Lqin;->s` | `(J)V` | `0x5eaa08` | 4 | 16 |
+| classes2.dex | `Lqin;->t` | `(MotionEvent,I)V` | `0x5eaa38` | 13 | 235 |
+| classes2.dex | `Lqin;->v` | `(MotionEvent)V` | `0x5eaca4` | 6 | 55 |
+
+Important: offsets above are absolute offsets of DEX code_item structures, not instruction offsets. The table confirms that `qil` and `qin` are in different DEX files and prevents accidentally resolving the right obfuscated class from the wrong DEX. Register counts and code-unit lengths are verified from the code_item headers. Before mutation, the composer still needs decoded instruction operands, branch targets, try/catch boundaries, and exact method-reference checks from these code items.
+
