@@ -51,8 +51,10 @@ public final class GboardSpacebarLanguageSwipeRuntime {
             SESSIONS.remove(pointerOwner);
             return;
         }
-        SESSIONS.put(pointerOwner,
-                new Session(originalSpacebar, x, y, thresholdPx));
+        synchronized (SESSIONS) {
+            SESSIONS.put(pointerOwner,
+                    new Session(originalSpacebar, x, y, thresholdPx));
+        }
     }
 
     /**
@@ -64,19 +66,21 @@ public final class GboardSpacebarLanguageSwipeRuntime {
         if (pointerOwner == null) {
             return;
         }
-        Session session = SESSIONS.get(pointerOwner);
-        if (session == null || session.cancelled || session.qualified) {
-            return;
-        }
-        if (cursorOwnsPointer || !Float.isFinite(x) || !Float.isFinite(y)) {
-            session.cancelled = true;
-            return;
-        }
+        synchronized (SESSIONS) {
+            Session session = SESSIONS.get(pointerOwner);
+            if (session == null || session.cancelled || session.qualified) {
+                return;
+            }
+            if (cursorOwnsPointer || !Float.isFinite(x) || !Float.isFinite(y)) {
+                session.cancelled = true;
+                return;
+            }
 
-        float dx = Math.abs(x - session.startX);
-        float dy = Math.abs(y - session.startY);
-        if (dx >= session.thresholdPx && dx >= dy * HORIZONTAL_DOMINANCE) {
-            session.qualified = true;
+            float dx = Math.abs(x - session.startX);
+            float dy = Math.abs(y - session.startY);
+            if (dx >= session.thresholdPx && dx >= dy * HORIZONTAL_DOMINANCE) {
+                session.qualified = true;
+            }
         }
     }
 
@@ -87,9 +91,11 @@ public final class GboardSpacebarLanguageSwipeRuntime {
         if (pointerOwner == null) {
             return false;
         }
-        Session session = SESSIONS.remove(pointerOwner);
-        return session != null && !session.cancelled && session.qualified
-                && session.originalSpacebar == originalSpacebar;
+        synchronized (SESSIONS) {
+            Session session = SESSIONS.remove(pointerOwner);
+            return session != null && !session.cancelled && session.qualified
+                    && session.originalSpacebar == originalSpacebar;
+        }
     }
 
     /** Clears state on cancel, reset, pointer replacement, or abandoned gesture. */
