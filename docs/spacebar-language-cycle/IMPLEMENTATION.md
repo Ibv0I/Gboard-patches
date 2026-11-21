@@ -203,3 +203,32 @@ The previously missed files do exist; their exact paths are:
 - patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/shared/runtimeabi/RuntimeCallEmitter.kt
 
 The Zhuyin slide patch is a useful example of capturing the original pointer anchor before stock retargeting. Its behavior suppresses retargeting and is not suitable for this feature as-is.
+
+## Further exact findings from the supplied JADX source
+
+### Move dispatcher `qil.h(MotionEvent)`
+
+The actual 18.5.4 decompilation confirms the cursor decision point more precisely:
+
+- `qin.v(event)` first adjusts coordinates for raw offset changes.
+- `qin.t(event, pointerIndex)` runs stock key movement. Inside it, if `qin.q != null`, the stock code returns early only when `qsl.d()` is true and the cursor controller's `tkd.h()` is false.
+- After that, `qil.h` updates coordinates/history.
+- Before resolving and dispatching the normal gesture action, `qil.h` evaluates `qin.m != previousSoftKeyView || qin.q == null || !qin.q.c(x, y, false)`.
+- Only when that condition is true does it call `qin.h(...)`, `qin.j(...)`, and `qin.n(...)`.
+
+Thus a safe observer should be placed after the condition's cursor-ownership test, not before `qin.t`, and should abandon the candidate gesture whenever the cursor owns the pointer. The check must use the same qsl.c(x, y, false) outcome, rather than simply testing qin.q for null.
+
+### Pointer-up completion `qil.t(qin, MotionEvent, int)`
+
+The full method confirms that `qin.G(event, softKeyDef, pointerIndex, actionIndex)` executes before normal action dispatch. If it returns true, the normal action path is skipped. Otherwise, the method calculates the final gesture, resolves an ActionDef, and calls `qin.u(...)`. Subsequent long-press/double-tap cleanup and `qin.A(...)` run in the same completion routine.
+
+A robust consume hook can therefore be inserted immediately before the `qin.u(...)` invocation, with a conditional branch to the existing post-action cleanup block. The runtime must return false for non-spacebar sessions, taps, vertical gestures, and cursor-owned sessions. It should return true exactly once for an armed horizontal spacebar swipe, invoke Gboard's internal next-language action, and let the original cleanup continue.
+
+### Original key identity
+
+`qin.B(SoftKeyView, float, float, long, int)` receives the newly assigned view before any movement retargeting. It also calls `r(...)` and `ac()` to finish/reset prior session state before storing the new view in `qin.m`. This is the correct place to capture the original view identity for a pointer session. The runtime must not rely on `qin.m` at pointer-up because `qin.F(...)` can retarget it during movement.
+
+### Implementation boundary
+
+The JADX Java source is enough to identify semantic insertion points, but it is not enough to author a safe smali transformation: exact instruction indexes, register assignments, branch labels, method access flags, and try/catch boundaries must be checked against the actual target DEX and the repository's generated version bindings. The next implementation task is to add explicit 18.5.4 bindings and shape verifiers for `qil.h` and the private static `qil.t`, then build tests for the injected branch layout before adding runtime behavior. Until those checks exist, no executable patch should be committed.
+
