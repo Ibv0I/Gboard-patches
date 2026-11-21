@@ -1,5 +1,8 @@
 package dev.jason.gboardpatches.extension.keyboard;
 
+import android.content.Context;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -95,8 +98,36 @@ public final class GboardSpacebarLanguageSwipeRuntime {
         }
         synchronized (SESSIONS) {
             Session session = SESSIONS.remove(pointerOwner);
-            return session != null && !session.cancelled && session.qualified
-                    && session.originalSpacebar == originalSpacebar;
+            if (session == null || session.cancelled || !session.qualified
+                    || session.originalSpacebar != originalSpacebar) {
+                return false;
+            }
+            // Consume the stock space action only when Gboard confirms the language switch.
+            return switchToNextGboardLanguage(pointerOwner);
+        }
+    }
+
+    /**
+     * Uses Gboard's native layout rotation: pga.F(context).t(true, pfi.d).
+     * If reflection or rotation fails, return false so the stock space action remains.
+     */
+    private static boolean switchToNextGboardLanguage(Object pointerOwner) {
+        try {
+            Object dispatcher = pointerOwner.getClass().getField("r").get(pointerOwner);
+            if (dispatcher == null) return false;
+            Context context = (Context) dispatcher.getClass().getField("b").get(dispatcher);
+            if (context == null) return false;
+            ClassLoader loader = context.getClassLoader();
+            Class<?> managerClass = Class.forName("defpackage.pga", false, loader);
+            Object manager = managerClass.getMethod("F", Context.class).invoke(null, context);
+            if (manager == null) return false;
+            Class<?> sourceClass = Class.forName("defpackage.pfi", false, loader);
+            Object globeKeySource = sourceClass.getField("d").get(null);
+            Object handled = managerClass.getMethod("t", boolean.class, sourceClass)
+                    .invoke(manager, true, globeKeySource);
+            return Boolean.TRUE.equals(handled);
+        } catch (ReflectiveOperationException | ClassCastException | LinkageError ignored) {
+            return false;
         }
     }
 
