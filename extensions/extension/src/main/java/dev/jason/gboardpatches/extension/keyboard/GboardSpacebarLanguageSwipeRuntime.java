@@ -48,7 +48,9 @@ public final class GboardSpacebarLanguageSwipeRuntime {
         }
         if (originalSpacebar == null || !Float.isFinite(x) || !Float.isFinite(y)
                 || !Float.isFinite(thresholdPx) || thresholdPx <= 0f) {
-            SESSIONS.remove(pointerOwner);
+            synchronized (SESSIONS) {
+                SESSIONS.remove(pointerOwner);
+            }
             return;
         }
         synchronized (SESSIONS) {
@@ -101,7 +103,9 @@ public final class GboardSpacebarLanguageSwipeRuntime {
     /** Clears state on cancel, reset, pointer replacement, or abandoned gesture. */
     public static void clear(Object pointerOwner) {
         if (pointerOwner != null) {
-            SESSIONS.remove(pointerOwner);
+            synchronized (SESSIONS) {
+                SESSIONS.remove(pointerOwner);
+            }
         }
     }
 }
