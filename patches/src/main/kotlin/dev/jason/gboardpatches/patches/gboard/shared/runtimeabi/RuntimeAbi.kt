@@ -2,6 +2,10 @@ package dev.jason.gboardpatches.patches.gboard.shared.runtimeabi
 
 internal enum class RuntimeCallId(internal val encodedAbi: String) {
     KEYPRESS_HAPTICS_RUNTIME_APPLY_FLAG_VALUE("Ldev/jason/gboardpatches/extension/keypresshaptics/GboardKeypressHapticsRuntime;->applyFlagValue(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;"),
+    SPACEBAR_LANGUAGE_SWIPE_BEGIN("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->begin(Ljava/lang/Object;Ljava/lang/Object;FFFF)V"),
+    SPACEBAR_LANGUAGE_SWIPE_OBSERVE("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->observe(Ljava/lang/Object;FFZ)V"),
+    SPACEBAR_LANGUAGE_SWIPE_FINISH("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->finish(Ljava/lang/Object;Ljava/lang/Object;)Z"),
+    SPACEBAR_LANGUAGE_SWIPE_CLEAR("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clear(Ljava/lang/Object;)V"),
     LANGUAGE_MODELS_RUNTIME_APPLY_FLAG_VALUE("Ldev/jason/gboardpatches/extension/languagemodels/GboardLanguageModelRuntime;->applyOverriddenFlagValue(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
     LANGUAGE_MODELS_RUNTIME_RESTRICT_NWP_CACHED_PACK("Ldev/jason/gboardpatches/extension/languagemodels/GboardLanguageModelRuntime;->restrictNwpCachedPack(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
     LANGUAGE_MODELS_RUNTIME_AFTER_HMM_ENROLL("Ldev/jason/gboardpatches/extension/languagemodels/GboardLanguageModelRuntime;->afterHmmEnroll(Ljava/lang/Object;Ljava/lang/String;Z)V"),
