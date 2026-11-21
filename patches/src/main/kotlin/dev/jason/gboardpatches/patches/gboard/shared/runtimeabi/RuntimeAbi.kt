@@ -2,7 +2,7 @@ package dev.jason.gboardpatches.patches.gboard.shared.runtimeabi
 
 internal enum class RuntimeCallId(internal val encodedAbi: String) {
     KEYPRESS_HAPTICS_RUNTIME_APPLY_FLAG_VALUE("Ldev/jason/gboardpatches/extension/keypresshaptics/GboardKeypressHapticsRuntime;->applyFlagValue(Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/Object;"),
-    SPACEBAR_LANGUAGE_SWIPE_BEGIN("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->begin(Ljava/lang/Object;Ljava/lang/Object;FFFF)V"),
+    SPACEBAR_LANGUAGE_SWIPE_BEGIN("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->begin(Ljava/lang/Object;Ljava/lang/Object;FFF)V"),
     SPACEBAR_LANGUAGE_SWIPE_OBSERVE("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->observe(Ljava/lang/Object;FFZ)V"),
     SPACEBAR_LANGUAGE_SWIPE_FINISH("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->finish(Ljava/lang/Object;Ljava/lang/Object;)Z"),
     SPACEBAR_LANGUAGE_SWIPE_CLEAR("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clear(Ljava/lang/Object;)V"),
