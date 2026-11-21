@@ -36,6 +36,54 @@ public final class GboardSpacebarLanguageSwipeRuntimeTest {
     }
 
     @Test
+    public void diagonalMovementMustBeClearlyHorizontal() {
+        Object owner = new Object();
+        Object space = new Object();
+        GboardSpacebarLanguageSwipeRuntime.begin(owner, space, 100f, 50f, THRESHOLD_PX);
+        GboardSpacebarLanguageSwipeRuntime.observe(owner, 130f, 30f, false);
+        assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(owner, space));
+    }
+
+    @Test
+    public void horizontalThresholdIsInclusive() {
+        Object owner = new Object();
+        Object space = new Object();
+        GboardSpacebarLanguageSwipeRuntime.begin(owner, space, 100f, 50f, THRESHOLD_PX);
+        GboardSpacebarLanguageSwipeRuntime.observe(owner, 124f, 50f, false);
+        assertTrue(GboardSpacebarLanguageSwipeRuntime.finish(owner, space));
+    }
+
+    @Test
+    public void replacingPointerSessionCannotReusePreviousGesture() {
+        Object owner = new Object();
+        Object firstSpace = new Object();
+        Object secondSpace = new Object();
+        GboardSpacebarLanguageSwipeRuntime.begin(owner, firstSpace, 100f, 50f, THRESHOLD_PX);
+        GboardSpacebarLanguageSwipeRuntime.observe(owner, 140f, 50f, false);
+
+        GboardSpacebarLanguageSwipeRuntime.begin(owner, secondSpace, 100f, 50f, THRESHOLD_PX);
+        assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(owner, firstSpace));
+        GboardSpacebarLanguageSwipeRuntime.observe(owner, 101f, 50f, false);
+        assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(owner, secondSpace));
+    }
+
+    @Test
+    public void sessionsForDifferentPointerOwnersAreIndependent() {
+        Object firstOwner = new Object();
+        Object secondOwner = new Object();
+        Object firstSpace = new Object();
+        Object secondSpace = new Object();
+        GboardSpacebarLanguageSwipeRuntime.begin(
+                firstOwner, firstSpace, 100f, 50f, THRESHOLD_PX);
+        GboardSpacebarLanguageSwipeRuntime.begin(
+                secondOwner, secondSpace, 100f, 50f, THRESHOLD_PX);
+        GboardSpacebarLanguageSwipeRuntime.observe(firstOwner, 130f, 50f, false);
+
+        assertTrue(GboardSpacebarLanguageSwipeRuntime.finish(firstOwner, firstSpace));
+        assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(secondOwner, secondSpace));
+    }
+
+    @Test
     public void verticalMovementNeverQualifies() {
         Object owner = new Object();
         Object space = new Object();
