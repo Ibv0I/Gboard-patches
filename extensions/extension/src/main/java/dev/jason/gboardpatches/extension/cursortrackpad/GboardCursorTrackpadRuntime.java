@@ -56,18 +56,19 @@ public final class GboardCursorTrackpadRuntime {
     }
 
     public static Object applyOverriddenFlagValue(String flagName, Object stockResult) {
+        if (!(GboardCursorTrackpadPolicy.FREE_CURSOR_FLAG.equals(flagName)
+                || GboardCursorTrackpadPolicy.FREE_CURSOR_LOCK_MODE_FLAG.equals(flagName))) {
+            return stockResult;
+        }
         try {
-            if (!(GboardCursorTrackpadPolicy.FREE_CURSOR_FLAG.equals(flagName)
-                    || GboardCursorTrackpadPolicy.FREE_CURSOR_LOCK_MODE_FLAG.equals(flagName))
-                    || !Boolean.FALSE.equals(stockResult)) {
-                return stockResult;
-            }
             SharedPreferences preferences = GboardFlagRuntimeContext.preferencesOrNull();
             Object result = applyOverriddenFlagValue(flagName, stockResult, preferences);
             logFlag("Feature flag " + flagName + ": stock=" + stockResult
                     + ", prefsAvailable=" + (preferences != null) + ", result=" + result);
             return result;
         } catch (Throwable ignored) {
+            logFlag("Feature flag " + flagName + ": diagnostic override failed, stock="
+                    + stockResult);
             return stockResult;
         }
     }
