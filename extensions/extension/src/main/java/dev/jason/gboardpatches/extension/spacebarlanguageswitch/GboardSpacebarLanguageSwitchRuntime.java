@@ -74,28 +74,33 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return false;
         }
 
+        ClassLoader classLoader = gestureDispatcher != null
+                ? gestureDispatcher.getClass().getClassLoader()
+                : keyMetadata.getClass().getClassLoader();
+        final ReflectionHandles handles;
         try {
-            ClassLoader classLoader = gestureDispatcher != null
-                    ? gestureDispatcher.getClass().getClassLoader()
-                    : keyMetadata.getClass().getClassLoader();
-            ReflectionHandles handles = reflectionHandles(classLoader);
+            handles = reflectionHandles(classLoader);
             if (!handles.isSpacebar(keyMetadata)
                     || !handles.hasAction(keyMetadata, handles.slideLeftActionType)
                     || !handles.hasAction(keyMetadata, handles.slideRightActionType)) {
                 return false;
             }
+        } catch (Throwable ignored) {
+            // Never swallow a gesture unless the source key was positively identified.
+            return false;
+        }
 
+        try {
             Context context = extractGestureDispatcherContext(gestureDispatcher, classLoader);
             if (context != null) {
                 // Left = previous enabled language; right = next enabled language.
                 switchEnabledLanguage(context, classLoader, "SLIDE_RIGHT".equals(actionName));
             }
-            // Consume the swipe even if only one language is enabled. The empty
-            // fallback payload prevents an accidental text insertion.
-            return true;
         } catch (Throwable ignored) {
-            return true;
+            // The action belongs to our spacebar, so consume its empty fallback
+            // even if a transient manager/reflection failure prevents switching.
         }
+        return true;
     }
 
     static int adjacentRotationIndex(int currentIndex, int itemCount, boolean next) {
