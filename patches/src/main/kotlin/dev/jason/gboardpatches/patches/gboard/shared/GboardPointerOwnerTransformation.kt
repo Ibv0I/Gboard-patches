@@ -324,7 +324,7 @@ private fun MutableMethod.requireSpacebarPointerMoveHook() {
     val invoke = instructions.firstOrNull()?.methodReference()
     check(
         instructions.size >= 4 &&
-            invoke == SPACEBAR_POINTER_MOVE_CALL &&
+            invoke?.matches(SPACEBAR_POINTER_MOVE_CALL) == true &&
             instructions[0].opcode == Opcode.INVOKE_STATIC &&
             instructions[1].opcode == Opcode.MOVE_RESULT &&
             instructions[2].opcode == Opcode.IF_EQZ &&
