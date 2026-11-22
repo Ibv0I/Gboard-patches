@@ -31,6 +31,18 @@ public class GboardSpacebarLanguageSwitchRuntimeTest {
     }
 
     @Test
+    public void cursorDragRequiresConfirmedLongPressAndMatchingHoldDuration() {
+        assertEquals(true,
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(true, 500, 425));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(true, 200, 425));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(false, 800, 425));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(false, 200, 425));
+    }
+
+    @Test
     public void onlySpacebarLongPressStartsCursorMode() {
         assertEquals(true,
                 GboardSpacebarLanguageSwitchRuntime.shouldCaptureCursorLongPress(
