@@ -1,11 +1,17 @@
 package dev.jason.gboardpatches.extension.spacebarlanguageswitch;
 
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.inputmethodservice.InputMethodService;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.inputmethod.InputConnection;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -30,11 +36,17 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Collections.synchronizedMap(new WeakHashMap<ClassLoader, ReflectionHandles>());
     private static final Map<Object, SpacebarSwipeState> SPACEBAR_SWIPE_STATES =
             Collections.synchronizedMap(new WeakHashMap<Object, SpacebarSwipeState>());
+    private static final Map<ClassLoader, Long> PENDING_CURSOR_RELEASES =
+            Collections.synchronizedMap(new WeakHashMap<ClassLoader, Long>());
+    private static volatile WeakReference<InputMethodService> INPUT_METHOD_SERVICE =
+            new WeakReference<>(null);
 
     private static final class SpacebarSwipeState {
         final long downTime;
         boolean handled;
         boolean nativeCursorDrag;
+        float lastCursorX = Float.NaN;
+        float cursorRemainderPx;
 
         SpacebarSwipeState(long downTime) {
             this.downTime = downTime;
@@ -42,6 +54,13 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     }
 
     private GboardSpacebarLanguageSwitchRuntime() {
+    }
+
+    /** The input-event bridge gives the cursor gesture access to the active editor connection. */
+    public static void noteInputMethodService(InputMethodService service) {
+        if (service != null) {
+            INPUT_METHOD_SERVICE = new WeakReference<>(service);
+        }
     }
 
     public static Object patchIncomingSoftKeyMetadata(Object receiver, Object keyMetadata) {
@@ -113,6 +132,10 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         final String actionName;
         try {
             handles = reflectionHandles(classLoader);
+            if (consumePendingSpacebarCursorRelease(classLoader, action, keyMetadata, handles)) {
+                Log.i(TAG, "Consumed the spacebar press ending a cursor drag");
+                return true;
+            }
             if (action.equals(handles.slideLeftActionType)) {
                 next = false;
                 actionName = "SLIDE_LEFT";
@@ -223,10 +246,18 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                     SPACEBAR_SWIPE_STATES.put(tracker, state);
                 }
             }
-            if (state.nativeCursorDrag || state.handled) {
-                // A completed language swipe remains consumed. A long-press cursor
-                // drag must always be forwarded to Gboard's original pointer handler.
-                return shouldConsumePointerMove(state.handled, state.nativeCursorDrag);
+            if (state.nativeCursorDrag) {
+                float currentX = motionEvent.getX(pointerIndex);
+                float cursorDeltaX = Float.isNaN(state.lastCursorX)
+                        ? 0.0f : currentX - state.lastCursorX;
+                state.lastCursorX = currentX;
+                // Keep the pointer locked to the spacebar while translating drag
+                // distance into editor cursor-key events. qin.t() would otherwise
+                // retarget the pointer to neighbouring keys.
+                return dispatchCursorMovement(state, spacebarView, cursorDeltaX);
+            }
+            if (state.handled) {
+                return true;
             }
 
             // qin.B() stores the original ACTION_DOWN coordinates in b/c.
@@ -257,18 +288,21 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             long cursorHoldThreshold = Math.max(
                     250L, (long) ViewConfiguration.getLongPressTimeout() - 75L);
             if (heldDuration >= cursorHoldThreshold) {
-                // Long hold belongs to Gboard's native cursor-control gesture.
-                // Preserve movement in either axis and never turn this drag
-                // into a language switch.
+                // A long hold followed by movement is cursor control, not a
+                // language swipe. Use the active InputConnection for DPAD movement
+                // and consume qin.t() so it cannot retarget the held space key.
+                state.lastCursorX = motionEvent.getX(pointerIndex);
+                if (!dispatchCursorMovement(state, spacebarView, deltaX)) {
+                    state.lastCursorX = Float.NaN;
+                    return false;
+                }
                 synchronized (SPACEBAR_SWIPE_STATES) {
                     state.nativeCursorDrag = true;
                 }
-                Log.i(TAG, "Handing long-press spacebar drag to Gboard cursor control"
-                        + " (held=" + heldDuration + "ms, dx=" + Math.round(deltaX)
-                        + ", dy=" + Math.round(deltaY) + ")");
-                // Do not consume this move: qin.t() must continue so Gboard can
-                // update its native cursor-control session.
-                return false;
+                markPendingSpacebarCursorRelease(classLoader);
+                Log.i(TAG, "Started spacebar cursor drag"
+                        + " (held=" + heldDuration + "ms, dx=" + Math.round(deltaX) + ")");
+                return true;
             }
 
             if (absX < touchSlop || absX <= absY * 1.2f) {
@@ -334,8 +368,109 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     }
 
     static boolean shouldConsumePointerMove(boolean languageSwipeHandled,
-            boolean nativeCursorDrag) {
-        return languageSwipeHandled && !nativeCursorDrag;
+            boolean cursorDragHandled) {
+        return languageSwipeHandled || cursorDragHandled;
+    }
+
+    private static boolean dispatchCursorMovement(SpacebarSwipeState state,
+            View spacebarView, float deltaX) {
+        InputMethodService service = resolveInputMethodService(spacebarView);
+        if (service == null) {
+            Log.w(TAG, "Cannot start spacebar cursor drag: InputMethodService unavailable");
+            return false;
+        }
+        InputConnection connection;
+        try {
+            connection = service.getCurrentInputConnection();
+        } catch (Throwable error) {
+            Log.w(TAG, "Cannot access the active editor connection", error);
+            return false;
+        }
+        if (connection == null) {
+            Log.w(TAG, "Cannot start spacebar cursor drag: no active InputConnection");
+            return false;
+        }
+
+        float density = spacebarView.getResources().getDisplayMetrics().density;
+        float pixelsPerCharacter = Math.max(1.0f, 10.0f * density);
+        float accumulated = state.cursorRemainderPx + deltaX;
+        int requestedSteps = (int) (accumulated / pixelsPerCharacter);
+        if (requestedSteps == 0) {
+            state.cursorRemainderPx = accumulated;
+            return true;
+        }
+
+        int steps = Math.max(-24, Math.min(24, requestedSteps));
+        state.cursorRemainderPx = accumulated - steps * pixelsPerCharacter;
+        // Drop excessive backlog rather than sending a burst of cursor events
+        // after a single large touch movement.
+        if (Math.abs(state.cursorRemainderPx) > pixelsPerCharacter * 3.0f) {
+            state.cursorRemainderPx = Math.copySign(pixelsPerCharacter * 0.5f,
+                    state.cursorRemainderPx);
+        }
+
+        int keyCode = steps > 0 ? KeyEvent.KEYCODE_DPAD_RIGHT : KeyEvent.KEYCODE_DPAD_LEFT;
+        int count = Math.abs(steps);
+        try {
+            connection.beginBatchEdit();
+            for (int i = 0; i < count; i++) {
+                long downTime = SystemClock.uptimeMillis();
+                connection.sendKeyEvent(new KeyEvent(downTime, downTime,
+                        KeyEvent.ACTION_DOWN, keyCode, 0));
+                connection.sendKeyEvent(new KeyEvent(downTime, SystemClock.uptimeMillis(),
+                        KeyEvent.ACTION_UP, keyCode, 0));
+            }
+        } catch (Throwable error) {
+            Log.w(TAG, "Failed to move the editor cursor from a spacebar drag", error);
+        } finally {
+            try {
+                connection.endBatchEdit();
+            } catch (Throwable ignored) {
+                // Batch-edit cleanup must not interrupt Gboard's pointer dispatch.
+            }
+        }
+        return true;
+    }
+
+    private static InputMethodService resolveInputMethodService(View view) {
+        Context context = view == null ? null : view.getContext();
+        for (int depth = 0; context != null && depth < 8; depth++) {
+            if (context instanceof InputMethodService service) {
+                noteInputMethodService(service);
+                return service;
+            }
+            if (!(context instanceof ContextWrapper wrapper)) {
+                break;
+            }
+            Context base = wrapper.getBaseContext();
+            if (base == context) {
+                break;
+            }
+            context = base;
+        }
+        WeakReference<InputMethodService> reference = INPUT_METHOD_SERVICE;
+        return reference == null ? null : reference.get();
+    }
+
+    private static void markPendingSpacebarCursorRelease(ClassLoader classLoader) {
+        if (classLoader != null) {
+            PENDING_CURSOR_RELEASES.put(classLoader,
+                    SystemClock.uptimeMillis() + 1500L);
+        }
+    }
+
+    private static boolean consumePendingSpacebarCursorRelease(ClassLoader classLoader,
+            Object action, Object metadata, ReflectionHandles handles) throws Throwable {
+        if (classLoader == null || action == null || metadata == null
+                || !action.equals(handles.pressActionType) || !handles.isSpacebar(metadata)) {
+            return false;
+        }
+        Long deadline = PENDING_CURSOR_RELEASES.get(classLoader);
+        if (deadline == null) {
+            return false;
+        }
+        PENDING_CURSOR_RELEASES.remove(classLoader);
+        return SystemClock.uptimeMillis() <= deadline.longValue();
     }
 
     static boolean isSpacebarLanguagePickerEvent(int eventCode, Object payload) {
