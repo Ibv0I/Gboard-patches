@@ -111,7 +111,6 @@ public final class GboardLongPressQuickActionsRuntime {
         if (service == null || event == null) {
             return false;
         }
-        GboardSpacebarLanguageSwitchRuntime.noteInputMethodService(service);
         if (GboardGlobeDragRuntime.maybeHandleInputEvent(service, event)) {
             return true;
         }
