@@ -20,16 +20,22 @@ import dev.jason.gboardpatches.patches.shared.Constants.COMPATIBILITY_GBOARD
 import java.util.WeakHashMap
 
 private const val TOP_ROW_HELPER_NAME = "jasondevDispatchWithTopRow"
+private const val SPACEBAR_LANGUAGE_SWITCH_HELPER_NAME = "jasondevDispatchSpacebarLanguageSwitch"
 private const val TOGGLE_HELPER_NAME = "jasondevDispatchOrToggle"
 private const val LONG_PRESS_HELPER_NAME = "jasondevDispatchGlobeDrag"
-private val GESTURE_HELPER_NAMES =
-    setOf(LONG_PRESS_HELPER_NAME, TOP_ROW_HELPER_NAME, TOGGLE_HELPER_NAME)
+private val GESTURE_HELPER_NAMES = setOf(
+    LONG_PRESS_HELPER_NAME,
+    SPACEBAR_LANGUAGE_SWITCH_HELPER_NAME,
+    TOP_ROW_HELPER_NAME,
+    TOGGLE_HELPER_NAME,
+)
 private val GESTURE_HELPER_ACCESS_FLAGS = AccessFlags.PRIVATE.value or AccessFlags.FINAL.value
 private val GESTURE_TARGET_ACCESS_FLAGS = AccessFlags.PUBLIC.value or AccessFlags.FINAL.value
 private val GESTURE_STOCK_FIELD_ACCESS_FLAGS = AccessFlags.PUBLIC.value or AccessFlags.FINAL.value
 
 internal enum class GboardGestureFamilyFeature {
     LONG_PRESS_QUICK_ACTIONS,
+    SPACEBAR_LANGUAGE_SWITCH,
     TOP_ROW_SWIPE,
     ZHUYIN_TOGGLE,
 }
@@ -53,6 +59,16 @@ private enum class GboardGestureFamilyStage(
             GestureOperand.Parameter(0),
             GestureOperand.Parameter(1),
             GestureOperand.Parameter(2),
+            GestureOperand.Parameter(3),
+        ),
+    ),
+    SPACEBAR_LANGUAGE_SWITCH(
+        feature = GboardGestureFamilyFeature.SPACEBAR_LANGUAGE_SWITCH,
+        order = 75,
+        call = RuntimeCallId.SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_CONSUME_GESTURE,
+        operands = listOf(
+            GestureOperand.Receiver,
+            GestureOperand.Parameter(1),
             GestureOperand.Parameter(3),
         ),
     ),
@@ -389,6 +405,17 @@ private fun MutableClass.applySelectedGestureFamily(
             ),
         )
     }
+    if (GboardGestureFamilyFeature.SPACEBAR_LANGUAGE_SWITCH in selected) {
+        addGestureHelper(
+            SPACEBAR_LANGUAGE_SWITCH_HELPER_NAME,
+            layout,
+            renderSpacebarLanguageSwitchHelperBody(
+                layout = layout,
+                includeTopRow = GboardGestureFamilyFeature.TOP_ROW_SWIPE in selected,
+                includeToggle = GboardGestureFamilyFeature.ZHUYIN_TOGGLE in selected,
+            ),
+        )
+    }
     if (GboardGestureFamilyFeature.LONG_PRESS_QUICK_ACTIONS in selected) {
         addGestureHelper(
             LONG_PRESS_HELPER_NAME,
@@ -407,6 +434,8 @@ private fun renderLongPressHelperBody(
 ): String {
     val stage = GboardGestureFamilyStage.LONG_PRESS_QUICK_ACTIONS
     val nextHelper = when {
+        GboardGestureFamilyFeature.SPACEBAR_LANGUAGE_SWITCH in selected ->
+            SPACEBAR_LANGUAGE_SWITCH_HELPER_NAME
         GboardGestureFamilyFeature.TOP_ROW_SWIPE in selected -> TOP_ROW_HELPER_NAME
         GboardGestureFamilyFeature.ZHUYIN_TOGGLE in selected -> TOGGLE_HELPER_NAME
         else -> null
@@ -457,6 +486,39 @@ private fun renderGestureOwnerWrapper(
     return """
         invoke-direct/range {p0 .. p${layout.rangeEndParameterRegister}}, ${GboardVersionBindings.gestureDispatch.referenceNamed(entryHelper)}
 
+        return-void
+    """.trimIndent()
+}
+
+private fun renderSpacebarLanguageSwitchHelperBody(
+    layout: GestureRegisterLayout,
+    includeTopRow: Boolean,
+    includeToggle: Boolean,
+): String {
+    val stage = GboardGestureFamilyStage.SPACEBAR_LANGUAGE_SWITCH
+    val continuation = when {
+        includeTopRow -> """
+            invoke-direct/range {p0 .. p${layout.rangeEndParameterRegister}}, ${GboardVersionBindings.gestureDispatch.referenceNamed(TOP_ROW_HELPER_NAME)}
+
+            return-void
+        """.trimIndent()
+        includeToggle -> """
+            invoke-direct/range {p0 .. p${layout.rangeEndParameterRegister}}, ${GboardVersionBindings.gestureDispatch.referenceNamed(TOGGLE_HELPER_NAME)}
+
+            return-void
+        """.trimIndent()
+        else -> renderStockGestureDispatch(layout)
+    }
+    return """
+        ${emitGestureRuntimeCall(stage.call, layout.render(stage.operands))}
+
+        move-result v0
+
+        if-nez v0, :cond_return
+
+        $continuation
+
+        :cond_return
         return-void
     """.trimIndent()
 }
@@ -537,6 +599,8 @@ private fun renderStockGestureDispatch(
 private fun Set<GboardGestureFamilyFeature>.entryHelperName(): String =
     when {
         GboardGestureFamilyFeature.LONG_PRESS_QUICK_ACTIONS in this -> LONG_PRESS_HELPER_NAME
+        GboardGestureFamilyFeature.SPACEBAR_LANGUAGE_SWITCH in this ->
+            SPACEBAR_LANGUAGE_SWITCH_HELPER_NAME
         GboardGestureFamilyFeature.TOP_ROW_SWIPE in this -> TOP_ROW_HELPER_NAME
         else -> TOGGLE_HELPER_NAME
     }
@@ -549,6 +613,9 @@ private fun MutableClass.verifyExactGestureFamilyState(
     val expectedHelperNames = buildSet {
         if (GboardGestureFamilyFeature.LONG_PRESS_QUICK_ACTIONS in selected) {
             add(LONG_PRESS_HELPER_NAME)
+        }
+        if (GboardGestureFamilyFeature.SPACEBAR_LANGUAGE_SWITCH in selected) {
+            add(SPACEBAR_LANGUAGE_SWITCH_HELPER_NAME)
         }
         if (GboardGestureFamilyFeature.TOP_ROW_SWIPE in selected) add(TOP_ROW_HELPER_NAME)
         if (GboardGestureFamilyFeature.ZHUYIN_TOGGLE in selected) add(TOGGLE_HELPER_NAME)
