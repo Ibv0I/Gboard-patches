@@ -5,6 +5,35 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 public class GboardSpacebarLanguageSwitchRuntimeTest {
+
+    @Test
+    public void nativeCursorDragIsPassedThroughToGboard() {
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(false, false));
+        assertEquals(true,
+                GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(true, false));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(false, true));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(true, true));
+    }
+
+    @Test
+    public void onlySpacebarLanguagePickerEventIsSuppressed() {
+        assertEquals(true,
+                GboardSpacebarLanguageSwitchRuntime.isSpacebarLanguagePickerEvent(
+                        -10022, "space"));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.isSpacebarLanguagePickerEvent(
+                        -10022, "globe"));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.isSpacebarLanguagePickerEvent(
+                        -10000, "space"));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.isSpacebarLanguagePickerEvent(
+                        -10022, null));
+    }
+
     @Test
     public void nextLanguageAdvancesAndWrapsAtEnd() {
         assertEquals(1, GboardSpacebarLanguageSwitchRuntime.adjacentRotationIndex(0, 3, true));
