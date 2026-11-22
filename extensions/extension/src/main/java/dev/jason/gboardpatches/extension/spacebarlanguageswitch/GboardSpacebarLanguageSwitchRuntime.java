@@ -2,6 +2,7 @@ package dev.jason.gboardpatches.extension.spacebarlanguageswitch;
 
 import android.content.Context;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 
 import java.lang.reflect.Array;
@@ -166,6 +167,79 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return true;
         } catch (Throwable error) {
             Log.e(TAG, "Failed to switch language for " + actionName, error);
+            return false;
+        }
+    }
+
+    /**
+     * Gboard's stock qin.t() only promotes a slide after the pointer leaves the key bounds.
+     * For the spacebar we use Gboard's own qin.h() direction resolver while the pointer is
+     * still over the key, then feed its SLIDE_LEFT/SLIDE_RIGHT ActionDef back through qin.n().
+     */
+    public static boolean maybePromoteSpacebarHorizontalSwipe(Object tracker,
+            MotionEvent motionEvent, int pointerIndex) {
+        if (tracker == null || motionEvent == null
+                || motionEvent.getActionMasked() != MotionEvent.ACTION_MOVE
+                || pointerIndex < 0 || pointerIndex >= motionEvent.getPointerCount()) {
+            return false;
+        }
+
+        ClassLoader classLoader = tracker.getClass().getClassLoader();
+        if (classLoader == null) {
+            return false;
+        }
+
+        try {
+            ReflectionHandles handles = reflectionHandles(classLoader);
+            Object currentView = handles.pointerCurrentViewField.get(tracker);
+            if (!(currentView instanceof View spacebarView)
+                    || spacebarView.getId() != SPACEBAR_VIEW_ID
+                    || !GboardSpacebarLanguageSwitchSettings.readEnabled(
+                            spacebarView.getContext())) {
+                return false;
+            }
+
+            Object previousAction = handles.pointerCurrentActionMethod.invoke(tracker);
+            if (previousAction == null) {
+                previousAction = Enum.valueOf(
+                        handles.actionTypeClass.asSubclass(Enum.class), "PRESS");
+            }
+
+            Object resolvedAction = handles.pointerResolveActionMethod.invoke(
+                    tracker,
+                    motionEvent.getX(pointerIndex),
+                    motionEvent.getY(pointerIndex),
+                    previousAction);
+            if (!(resolvedAction instanceof Enum<?> resolvedEnum)) {
+                return false;
+            }
+
+            String actionName = resolvedEnum.name();
+            if (!"SLIDE_LEFT".equals(actionName) && !"SLIDE_RIGHT".equals(actionName)) {
+                return false;
+            }
+
+            Object actionDef = handles.pointerFindActionMethod.invoke(tracker, resolvedAction);
+            if (actionDef == null) {
+                Log.w(TAG, "Gboard resolved " + actionName
+                        + " for the spacebar but no matching ActionDef was found");
+                return false;
+            }
+
+            // Reuse Gboard's normal active-action transition so the PRESS action is
+            // replaced by the slide action before the pointer is released.
+            Log.i(TAG, "Promoting in-spacebar horizontal movement to " + actionName);
+            handles.pointerUpdateActionMethod.invoke(
+                    tracker,
+                    actionDef,
+                    false,
+                    false,
+                    false,
+                    motionEvent.getEventTime(),
+                    motionEvent.getDeviceId());
+            return true;
+        } catch (Throwable error) {
+            Log.e(TAG, "Failed to promote horizontal spacebar movement", error);
             return false;
         }
     }
@@ -383,6 +457,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         private final Object slideLeftActionType;
         private final Object slideRightActionType;
         private final Object commitIntention;
+        private final Class<?> actionTypeClass;
+        private final Field pointerCurrentViewField;
+        private final Method pointerCurrentActionMethod;
+        private final Method pointerResolveActionMethod;
+        private final Method pointerFindActionMethod;
+        private final Method pointerUpdateActionMethod;
 
         ReflectionHandles(ClassLoader classLoader) throws Throwable {
             Class<?> actionTypeClass = Class.forName("qae", false, classLoader);
@@ -396,6 +476,17 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Class<?> actionBuilderClass = Class.forName("qaf", false, classLoader);
             Class<?> keyMetadataBuilderClass = Class.forName("qcv", false, classLoader);
             Class<?> intentionClass = Class.forName("qbb", false, classLoader);
+            Class<?> pointerTrackerClass = Class.forName("qin", false, classLoader);
+            actionTypeClass = actionTypeClass;
+
+            pointerCurrentViewField = pointerTrackerClass.getDeclaredField("m");
+            pointerCurrentActionMethod = pointerTrackerClass.getDeclaredMethod("i");
+            pointerResolveActionMethod = pointerTrackerClass.getDeclaredMethod(
+                    "h", float.class, float.class, actionTypeClass);
+            pointerFindActionMethod = pointerTrackerClass.getDeclaredMethod("k", actionTypeClass);
+            pointerUpdateActionMethod = pointerTrackerClass.getDeclaredMethod(
+                    "n", actionDefClass, boolean.class, boolean.class, boolean.class,
+                    long.class, int.class);
 
             pressActionMethod = keyMetadataClass.getDeclaredMethod("g", actionTypeClass);
             primaryActionDataMethod = actionDefClass.getDeclaredMethod("b");
@@ -434,6 +525,11 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             copyKeyMetadataMethod.setAccessible(true);
             buildKeyMetadataMethod.setAccessible(true);
             putActionMethod.setAccessible(true);
+            pointerCurrentViewField.setAccessible(true);
+            pointerCurrentActionMethod.setAccessible(true);
+            pointerResolveActionMethod.setAccessible(true);
+            pointerFindActionMethod.setAccessible(true);
+            pointerUpdateActionMethod.setAccessible(true);
         }
 
         Object pressAction(Object metadata) throws Throwable {
