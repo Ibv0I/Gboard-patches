@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
 import dev.jason.gboardpatches.extension.core.input.GboardEditorActions;
+import dev.jason.gboardpatches.extension.spacebarlanguageswitch.GboardSpacebarLanguageSwitchRuntime;
 
 import java.lang.ref.WeakReference;
 import java.util.Collections;
@@ -110,6 +111,7 @@ public final class GboardLongPressQuickActionsRuntime {
         if (service == null || event == null) {
             return false;
         }
+        GboardSpacebarLanguageSwitchRuntime.noteInputMethodService(service);
         if (GboardGlobeDragRuntime.maybeHandleInputEvent(service, event)) {
             return true;
         }
