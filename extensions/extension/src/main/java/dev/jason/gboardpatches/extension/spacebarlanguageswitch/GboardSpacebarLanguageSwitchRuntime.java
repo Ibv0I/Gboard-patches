@@ -44,10 +44,14 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 return keyMetadata;
             }
 
+            Object pressAction = handles.pressAction(keyMetadata);
+            if (pressAction == null) {
+                return keyMetadata;
+            }
             Object builder = handles.keyMetadataBuilderConstructor.newInstance();
             handles.copyKeyMetadataMethod.invoke(builder, keyMetadata);
-            Object slideLeft = handles.buildEmptySlideAction(handles.slideLeftActionType);
-            Object slideRight = handles.buildEmptySlideAction(handles.slideRightActionType);
+            Object slideLeft = handles.buildEmptySlideAction(handles.slideLeftActionType, pressAction);
+            Object slideRight = handles.buildEmptySlideAction(handles.slideRightActionType, pressAction);
             if (slideLeft == null || slideRight == null) {
                 return keyMetadata;
             }
@@ -331,7 +335,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         private final Object pressActionType;
         private final Object slideLeftActionType;
         private final Object slideRightActionType;
-        private final Object commitIntention;
+        private final Class<?> intentionClass;
 
         ReflectionHandles(ClassLoader classLoader) throws Throwable {
             Class<?> actionTypeClass = Class.forName("qae", false, classLoader);
@@ -366,7 +370,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             pressActionType = enumConstant(actionTypeClass, "a");
             slideLeftActionType = enumConstant(actionTypeClass, "e");
             slideRightActionType = enumConstant(actionTypeClass, "f");
-            commitIntention = enumValue(intentionClass, "COMMIT");
+            this.intentionClass = intentionClass;
 
             pressActionMethod.setAccessible(true);
             primaryActionDataMethod.setAccessible(true);
@@ -382,11 +386,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             putActionMethod.setAccessible(true);
         }
 
+        Object pressAction(Object metadata) throws Throwable {
+            return metadata != null ? pressActionMethod.invoke(metadata, pressActionType) : null;
+        }
+
         boolean isSpacebar(Object metadata) throws Throwable {
-            if (metadata == null) {
-                return false;
-            }
-            Object pressAction = pressActionMethod.invoke(metadata, pressActionType);
+            Object pressAction = pressAction(metadata);
             Object actionData = pressAction != null
                     ? primaryActionDataMethod.invoke(pressAction) : null;
             return actionData != null && actionDataKeycodeField.getInt(actionData) == SPACE_KEYCODE;
@@ -396,13 +401,35 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return pressActionMethod.invoke(metadata, actionType) != null;
         }
 
-        Object buildEmptySlideAction(Object actionType) throws Throwable {
+        Object buildEmptySlideAction(Object actionType, Object pressAction) throws Throwable {
             Object builder = actionBuilderConstructor.newInstance();
             actionTypeField.set(builder, actionType);
+            Object intention = fieldValueOfType(pressAction, intentionClass);
             setPopupLabelsMethod.invoke(builder, (Object) new String[] {""});
-            setSingleActionMethod.invoke(builder, PLAIN_TEXT_KEYCODE, commitIntention, "");
+            // Reuse the real spacebar PRESS intention rather than assuming a
+            // deobfuscated enum name for qbb in the current Gboard build.
+            setSingleActionMethod.invoke(builder, PLAIN_TEXT_KEYCODE, intention, "");
             return buildActionMethod.invoke(builder);
         }
+    }
+
+    private static Object fieldValueOfType(Object instance, Class<?> fieldType)
+            throws ReflectiveOperationException {
+        Class<?> current = instance.getClass();
+        while (current != null) {
+            for (Field field : current.getDeclaredFields()) {
+                if (field.getType() == fieldType) {
+                    field.setAccessible(true);
+                    Object value = field.get(instance);
+                    if (value != null) {
+                        return value;
+                    }
+                }
+            }
+            current = current.getSuperclass();
+        }
+        throw new NoSuchFieldException(
+                "No " + fieldType.getName() + " field on " + instance.getClass().getName());
     }
 
     private static Object enumConstant(Class<?> enumClass, String fieldName)
