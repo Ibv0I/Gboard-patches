@@ -52,7 +52,7 @@ class GboardPortProductCatalogContractTest {
     @Test
     fun catalogIsDeterministicAndDeclaresSelectedOnlyZeroSelectionComposition() {
         assertEquals("gboard-port-product-catalog.v1", catalog["format"].asString)
-        assertEquals("1.23.0", catalog["catalog_version"].asString)
+        assertEquals("1.24.0", catalog["catalog_version"].asString)
         val composition = catalog.getAsJsonObject("composition")
         assertEquals(
             setOf("selected_only_call_chain", "runtime_feature_mask"),
