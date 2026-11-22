@@ -29,6 +29,7 @@ import dev.jason.gboardpatches.patches.gboard.features.roundedkeyboard.gboardRou
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlogo.gboardSpacebarLogoSoftKeyPatch
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchGesturePatch
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchPointerPatch
+import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchPickerPatch
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchSoftKeyPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeGesturePatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipePointerPatch
@@ -125,7 +126,10 @@ internal object GboardContributionWiring {
                 arrayOf(gboardSpacebarLanguageSwitchSoftKeyPatch)
             },
             unit("spacebar_language_switch.pointer") {
-                arrayOf(gboardSpacebarLanguageSwitchPointerPatch)
+                arrayOf(
+                    gboardSpacebarLanguageSwitchPointerPatch,
+                    gboardSpacebarLanguageSwitchPickerPatch,
+                )
             },
             unit("spacebar_language_switch.gesture") {
                 arrayOf(gboardSpacebarLanguageSwitchGesturePatch)
