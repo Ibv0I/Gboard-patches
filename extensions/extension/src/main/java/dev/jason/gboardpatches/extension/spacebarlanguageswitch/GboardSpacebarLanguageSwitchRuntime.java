@@ -145,6 +145,23 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 return true;
             }
 
+            boolean isSpacebar = handles.isSpacebar(keyMetadata);
+            if (action.equals(handles.pressActionType) && isSpacebar
+                    && hasPendingSpacebarCursorLongPress(classLoader)) {
+                consumePendingSpacebarCursorLongPress(classLoader);
+                Log.i(TAG, "Cleared unused cursor LONG_PRESS marker on spacebar release");
+            }
+
+            boolean isHorizontalSlide = action.equals(handles.slideLeftActionType)
+                    || action.equals(handles.slideRightActionType);
+            if (shouldSuppressLanguageSwitchDuringCursorDrag(
+                    isHorizontalSlide,
+                    hasPendingSpacebarCursorLongPress(classLoader),
+                    hasPendingSpacebarCursorRelease(classLoader))) {
+                Log.i(TAG, "Suppressed language switch from the active spacebar cursor drag");
+                return true;
+            }
+
             String dispatchedActionName = action instanceof Enum<?> enumAction
                     ? enumAction.name() : String.valueOf(action);
             if (shouldCaptureCursorLongPress(dispatchedActionName,
@@ -581,10 +598,30 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         return dispatchedLongPress && heldDuration >= cursorHoldThreshold;
     }
 
+    static boolean shouldSuppressLanguageSwitchDuringCursorDrag(boolean horizontalSlide,
+            boolean pendingLongPress, boolean activeCursorDrag) {
+        return horizontalSlide && (pendingLongPress || activeCursorDrag);
+    }
+
+    private static boolean hasPendingSpacebarCursorRelease(ClassLoader classLoader) {
+        if (classLoader == null) {
+            return false;
+        }
+        Long deadline = PENDING_CURSOR_RELEASES.get(classLoader);
+        if (deadline == null) {
+            return false;
+        }
+        if (SystemClock.uptimeMillis() > deadline.longValue()) {
+            PENDING_CURSOR_RELEASES.remove(classLoader);
+            return false;
+        }
+        return true;
+    }
+
     private static void markPendingSpacebarCursorRelease(ClassLoader classLoader) {
         if (classLoader != null) {
             PENDING_CURSOR_RELEASES.put(classLoader,
-                    SystemClock.uptimeMillis() + 1500L);
+                    SystemClock.uptimeMillis() + 10_000L);
         }
     }
 
