@@ -276,7 +276,7 @@ private fun MutableClass.validatePointerOwnerBindings(
     ) { "Pointer owner SoftKeyView binding relation drift" }
 
     if (GboardPointerOwnerFeature.SPACEBAR_LANGUAGE_SWITCH in selected) {
-        ownerClass.resolveSpacebarPointerMoveMethod()
+        resolveSpacebarPointerMoveMethod()
     }
 
     val needsLifecycle = selected.isNotEmpty()
