@@ -107,6 +107,17 @@ public final class GboardSpacebarLanguageSwipeRuntimeTest {
         assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(owner, space));
     }
 
+
+    @Test
+    public void laterVerticalMovementRevokesAnEarlierHorizontalQualification() {
+        Object owner = new Object();
+        Object space = new Object();
+        GboardSpacebarLanguageSwipeRuntime.begin(owner, space, 100f, 50f, THRESHOLD_PX);
+        GboardSpacebarLanguageSwipeRuntime.observe(owner, 130f, 50f, false);
+        GboardSpacebarLanguageSwipeRuntime.observe(owner, 130f, 90f, false);
+        assertFalse(GboardSpacebarLanguageSwipeRuntime.finish(owner, space));
+    }
+
     @Test
     public void verticalMovementNeverQualifies() {
         Object owner = new Object();

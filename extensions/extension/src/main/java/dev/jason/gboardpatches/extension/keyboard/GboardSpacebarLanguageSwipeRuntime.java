@@ -97,7 +97,7 @@ public final class GboardSpacebarLanguageSwipeRuntime {
         final Session session;
         synchronized (SESSIONS) {
             session = SESSIONS.get(owner);
-            if (session == null || session.cancelled || !session.qualified) return stockAction;
+            if (session == null || session.cancelled) return stockAction;
         }
         Field gestureState = null;
         Object previousState = null;
@@ -110,6 +110,13 @@ public final class GboardSpacebarLanguageSwipeRuntime {
                     || actionIndex >= event.getPointerCount()
                     || event.getPointerId(actionIndex) != field(owner, "a").getInt(owner)) {
                 return stockAction;
+            }
+
+            synchronized (SESSIONS) {
+                if (SESSIONS.get(owner) != session || session.cancelled) return stockAction;
+                session.qualified = qualifies(
+                        session, event.getX(actionIndex), event.getY(actionIndex));
+                if (!session.qualified) return stockAction;
             }
 
             gestureState = field(owner, "i");
@@ -147,14 +154,21 @@ public final class GboardSpacebarLanguageSwipeRuntime {
         if (owner == null) return;
         synchronized (SESSIONS) {
             Session s = SESSIONS.get(owner);
-            if (s == null || s.cancelled || s.qualified) return;
+            if (s == null || s.cancelled) return;
             if (cursorOwns || !Float.isFinite(x) || !Float.isFinite(y)) {
                 s.cancelled = true;
+                s.qualified = false;
                 return;
             }
-            float dx = Math.abs(x - s.startX), dy = Math.abs(y - s.startY);
-            if (dx >= s.thresholdPx && dx >= dy * HORIZONTAL_DOMINANCE) s.qualified = true;
+            s.qualified = qualifies(s, x, y);
         }
+    }
+
+    private static boolean qualifies(Session session, float x, float y) {
+        if (!Float.isFinite(x) || !Float.isFinite(y)) return false;
+        float dx = Math.abs(x - session.startX);
+        float dy = Math.abs(y - session.startY);
+        return dx >= session.thresholdPx && dx >= dy * HORIZONTAL_DOMINANCE;
     }
 
     public static boolean finish(Object owner, Object originalSpacebar) {
