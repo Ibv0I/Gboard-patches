@@ -248,6 +248,22 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 return false;
             }
 
+            long heldDuration = Math.max(0L,
+                    motionEvent.getEventTime() - motionEvent.getDownTime());
+            long cursorHoldThreshold = Math.max(
+                    250L, (long) ViewConfiguration.getLongPressTimeout() - 75L);
+            if (heldDuration >= cursorHoldThreshold) {
+                // Long hold belongs to Gboard's native cursor-control gesture.
+                // Keep the pointer captured on the spacebar, but never convert
+                // this drag into a language switch.
+                synchronized (SPACEBAR_SWIPE_STATES) {
+                    state.handled = true;
+                }
+                Log.i(TAG, "Preserving native spacebar cursor drag"
+                        + " (held=" + heldDuration + "ms, dx=" + Math.round(deltaX) + ")");
+                return true;
+            }
+
             if (absX < switchThreshold) {
                 return true;
             }
@@ -273,6 +289,35 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return true;
         } catch (Throwable error) {
             Log.e(TAG, "Failed to detect horizontal spacebar swipe", error);
+            return false;
+        }
+    }
+
+    /**
+     * Suppresses only the spacebar long-press input-method picker request.
+     * Other picker sources (globe key, accessibility, etc.) remain untouched.
+     */
+    public static boolean maybeConsumeSpacebarLanguagePickerEvent(Object inputEvent) {
+        if (inputEvent == null) {
+            return false;
+        }
+        try {
+            ReflectionHandles handles = reflectionHandles(
+                    inputEvent.getClass().getClassLoader());
+            Object actionData = handles.inputEventGetActionDataMethod.invoke(inputEvent);
+            if (actionData == null) {
+                return false;
+            }
+            int eventCode = handles.actionDataKeycodeField.getInt(actionData);
+            Object payload = handles.actionDataPayloadField.get(actionData);
+            if (eventCode != -10022 || !"space".equals(payload)) {
+                return false;
+            }
+            Log.i(TAG, "Suppressed spacebar long-press language picker; "
+                    + "native cursor control remains available");
+            return true;
+        } catch (Throwable error) {
+            Log.e(TAG, "Could not inspect spacebar long-press picker event", error);
             return false;
         }
     }
@@ -474,6 +519,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         private final Method pressActionMethod;
         private final Method primaryActionDataMethod;
         private final Field actionDataKeycodeField;
+        private final Field actionDataPayloadField;
+        private final Method inputEventGetActionDataMethod;
         private final Constructor<?> actionBuilderConstructor;
         private final Field actionTypeField;
         private final Method setPopupLabelsMethod;
@@ -508,6 +555,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Class<?> keyMetadataBuilderClass = Class.forName("qcv", false, classLoader);
             Class<?> intentionClass = Class.forName("qbb", false, classLoader);
             Class<?> pointerTrackerClass = Class.forName("qin", false, classLoader);
+            Class<?> inputEventClass = Class.forName("ohe", false, classLoader);
             this.actionTypeClass = actionTypeClass;
 
             pointerCurrentViewField = pointerTrackerClass.getDeclaredField("m");
@@ -521,6 +569,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             pressActionMethod = keyMetadataClass.getDeclaredMethod("g", actionTypeClass);
             primaryActionDataMethod = actionDefClass.getDeclaredMethod("b");
             actionDataKeycodeField = actionDataClass.getDeclaredField("c");
+            actionDataPayloadField = actionDataClass.getDeclaredField("e");
+            inputEventGetActionDataMethod = inputEventClass.getDeclaredMethod("g");
             actionBuilderConstructor = actionBuilderClass.getDeclaredConstructor();
             actionTypeField = actionBuilderClass.getDeclaredField("a");
             setPopupLabelsMethod = actionBuilderClass.getDeclaredMethod("t", String[].class);
@@ -546,6 +596,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             pressActionMethod.setAccessible(true);
             primaryActionDataMethod.setAccessible(true);
             actionDataKeycodeField.setAccessible(true);
+            actionDataPayloadField.setAccessible(true);
+            inputEventGetActionDataMethod.setAccessible(true);
             actionBuilderConstructor.setAccessible(true);
             actionTypeField.setAccessible(true);
             setPopupLabelsMethod.setAccessible(true);
