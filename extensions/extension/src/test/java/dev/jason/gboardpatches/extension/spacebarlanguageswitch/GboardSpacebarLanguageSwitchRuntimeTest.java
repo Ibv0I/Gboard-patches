@@ -31,6 +31,22 @@ public class GboardSpacebarLanguageSwitchRuntimeTest {
     }
 
     @Test
+    public void onlySpacebarLongPressStartsCursorMode() {
+        assertEquals(true,
+                GboardSpacebarLanguageSwitchRuntime.shouldCaptureCursorLongPress(
+                        "LONG_PRESS", true));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldCaptureCursorLongPress(
+                        "PRESS", true));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldCaptureCursorLongPress(
+                        "LONG_PRESS", false));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldCaptureCursorLongPress(
+                        "SLIDE_LEFT", true));
+    }
+
+    @Test
     public void onlySpacebarLanguagePickerEventIsSuppressed() {
         assertEquals(true,
                 GboardSpacebarLanguageSwitchRuntime.isSpacebarLanguagePickerEvent(
