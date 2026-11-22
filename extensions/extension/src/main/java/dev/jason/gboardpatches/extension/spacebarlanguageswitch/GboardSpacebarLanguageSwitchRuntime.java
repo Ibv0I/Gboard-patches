@@ -34,6 +34,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 || keyMetadata == null) {
             return keyMetadata;
         }
+        if (!GboardSpacebarLanguageSwitchSettings.readEnabled(view.getContext())) {
+            return keyMetadata;
+        }
         try {
             ReflectionHandles handles = reflectionHandles(receiver.getClass().getClassLoader());
             if (!handles.isSpacebar(keyMetadata)) {
@@ -115,6 +118,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             if (context == null) {
                 Log.e(TAG, "Gesture dispatcher context was not available");
                 return false;
+            }
+            if (!GboardSpacebarLanguageSwitchSettings.readEnabled(context)) {
+                // The actions may still be present until Gboard rebuilds its keyboard view.
+                // Consume the slide without switching or dispatching the empty placeholder action.
+                Log.d(TAG, "Spacebar language swipe is disabled");
+                return true;
             }
 
             boolean switched = switchEnabledLanguage(context, classLoader, next);
