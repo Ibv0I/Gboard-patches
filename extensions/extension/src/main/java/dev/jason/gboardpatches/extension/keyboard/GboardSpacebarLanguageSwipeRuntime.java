@@ -113,6 +113,12 @@ public final class GboardSpacebarLanguageSwipeRuntime {
                 return stockAction;
             }
 
+            // Do not steal LONG_PRESS, DOUBLE_TAP, slide actions, or a missing action.
+            // Only the final native PRESS action can be replaced by language rotation.
+            if (!isPressAction(stockAction, owner.getClass().getClassLoader())) {
+                return stockAction;
+            }
+
             synchronized (SESSIONS) {
                 if (SESSIONS.get(owner) != session || session.cancelled) return stockAction;
                 session.qualified = qualifies(
@@ -136,6 +142,14 @@ public final class GboardSpacebarLanguageSwipeRuntime {
             }
             return stockAction;
         }
+    }
+
+    private static boolean isPressAction(Object action, ClassLoader loader)
+            throws ReflectiveOperationException {
+        if (action == null) return false;
+        Class<?> qae = Class.forName("defpackage.qae", false, loader);
+        Object press = qae.getField("a").get(null);
+        return field(action, "e").get(action) == press;
     }
 
     public static void begin(Object owner, Object originalSpacebar,

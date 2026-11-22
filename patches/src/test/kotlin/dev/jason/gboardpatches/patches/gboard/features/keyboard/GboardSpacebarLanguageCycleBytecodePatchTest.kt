@@ -39,6 +39,12 @@ class GboardSpacebarLanguageCycleBytecodePatchTest {
         assertTrue(source.contains("SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL"))
         assertTrue(source.contains("SPACEBAR_LANGUAGE_SWIPE_CLEAR"))
         assertTrue(source.contains("qinPointerDispatchAction"))
+        val runtime = readSource(
+            "../extensions/extension/src/main/java/dev/jason/gboardpatches/extension/" +
+                "keyboard/GboardSpacebarLanguageSwipeRuntime.java",
+        )
+        assertTrue(runtime.contains("isPressAction(stockAction"))
+        assertTrue(runtime.contains("Do not steal LONG_PRESS"))
     }
 
     @Test
