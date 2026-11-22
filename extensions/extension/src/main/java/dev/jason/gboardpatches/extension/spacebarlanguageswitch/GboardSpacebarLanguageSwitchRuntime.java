@@ -381,11 +381,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             buildKeyMetadataMethod = keyMetadataBuilderClass.getDeclaredMethod("b");
             putActionMethod = keyMetadataBuilderClass.getDeclaredMethod("t", actionDefClass);
 
-            // Gboard 18.5.4 obfuscates qae. TouchActionBundle uses qae.a
-            // for press, while qin.t maps left/right swipes to qae.e/qae.f.
+            // Gboard 18.5.4 obfuscates qae. qin.h(float, float, qae)
+            // maps horizontal left/right swipes to qae.c/qae.d and vertical
+            // up/down swipes to qae.e/qae.f. qae.a remains the press action.
             pressActionType = enumConstant(actionTypeClass, "a");
-            slideLeftActionType = enumConstant(actionTypeClass, "e");
-            slideRightActionType = enumConstant(actionTypeClass, "f");
+            slideLeftActionType = enumConstant(actionTypeClass, "c");
+            slideRightActionType = enumConstant(actionTypeClass, "d");
             this.intentionClass = intentionClass;
 
             pressActionMethod.setAccessible(true);
