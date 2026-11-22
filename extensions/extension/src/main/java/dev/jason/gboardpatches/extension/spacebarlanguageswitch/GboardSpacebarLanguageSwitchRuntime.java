@@ -477,7 +477,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Class<?> keyMetadataBuilderClass = Class.forName("qcv", false, classLoader);
             Class<?> intentionClass = Class.forName("qbb", false, classLoader);
             Class<?> pointerTrackerClass = Class.forName("qin", false, classLoader);
-            actionTypeClass = actionTypeClass;
+            this.actionTypeClass = actionTypeClass;
 
             pointerCurrentViewField = pointerTrackerClass.getDeclaredField("m");
             pointerCurrentActionMethod = pointerTrackerClass.getDeclaredMethod("i");
