@@ -83,6 +83,7 @@ import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplit
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardAccessPointPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardModePatch
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlogo.gboardSpacebarLogoFeatureMarkerPatch
+import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.symbolfooter.gboardSymbolFooterOrderBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.symbolfooter.gboardSymbolFooterOrderFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.shiftdelete.gboardShiftDeleteBytecodePatch
@@ -90,7 +91,6 @@ import dev.jason.gboardpatches.patches.gboard.features.shiftdelete.gboardShiftDe
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeFeatureMarkerPatch
-import dev.jason.gboardpatches.patches.gboard.features.keyboard.gboardSpacebarLanguageCycleBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.writingtools.gboardAiWritingToolsFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.writingtools.gboardAiWritingToolsFlagValuePatch
 import dev.jason.gboardpatches.patches.gboard.shared.gboardPatchesExtensionCarrierPatch
@@ -580,19 +580,15 @@ val gboardCustomTopRowSwipePatch = gboardPublicResourcePatch(
 }
 
 @Suppress("unused")
-val gboardSpacebarLanguageCyclePatch = gboardPublicResourcePatch(
-    featureId = "spacebar_language_cycle",
-    name = "Spacebar Language Cycle",
-    description = "Swipe horizontally across the spacebar to switch to the next configured Gboard language or layout. Taps, long-press and cursor movement keep their native behavior.",
+val gboardSpacebarLanguageSwitchPatch = gboardPublicResourcePatch(
+    featureId = "spacebar_language_switch",
+    name = "Swipe on Spacebar to Switch Languages",
+    description = "Swipe left on the spacebar for the previous enabled language or right for the next one. Tapping still inserts a normal space.",
     default = true,
 ) {
     compatibleWith(COMPATIBILITY_GBOARD)
 
-    dependsOn(
-        gboardPatchesSettingsPatch,
-        gboardPatchesExtensionCarrierPatch,
-        gboardSpacebarLanguageCycleBytecodePatch,
-    )
+    dependsOn(gboardSpacebarLanguageSwitchFeatureMarkerPatch)
 }
 
 @Suppress("unused")
@@ -958,7 +954,7 @@ object GboardPublishedPatchCatalog {
         gboardZhuyinQuickTraditionalSimplifiedTogglePatch,
         gboardCustomSymbolsPatch,
         gboardCustomTopRowSwipePatch,
-        gboardSpacebarLanguageCyclePatch,
+        gboardSpacebarLanguageSwitchPatch,
         gboardBackupRestorePatch,
         gboardDeveloperOptionsPatch,
         gboardSymbolsFooterOrderPatch,
