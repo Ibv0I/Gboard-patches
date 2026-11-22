@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<settings-text locales="en zh-Hant">
+<settings-text locales="en zh-Hant ru">
     <string name="gboard_patches_frosted_glass_title">
         <translation locale="en">Frosted Glass</translation>
         <translation locale="zh-Hant">磨砂玻璃</translation>
@@ -3783,5 +3783,41 @@
     <string name="gboard_patches_spacebar_logo_size_invalid">
         <translation locale="en">Enter a size between 12 and 40 dp.</translation>
         <translation locale="zh-Hant">請輸入 12 至 40 dp 的尺寸。</translation>
+    </string>
+
+    <string name="gboard_patches_spacebar_language_switch_title">
+        <translation locale="en">Spacebar language swipe</translation>
+        <translation locale="zh-Hant">空白鍵滑動切換語言</translation>
+        <translation locale="ru">Свайп по пробелу</translation>
+    </string>
+    <string name="gboard_patches_spacebar_language_switch_summary">
+        <translation locale="en">Switch between enabled keyboard languages by swiping across the spacebar.</translation>
+        <translation locale="zh-Hant">在空白鍵上滑動，即可切換已啟用的鍵盤語言。</translation>
+        <translation locale="ru">Переключайте включённые языки клавиатуры, проводя пальцем по пробелу.</translation>
+    </string>
+    <string name="gboard_patches_spacebar_language_switch_section">
+        <translation locale="en">Gesture</translation>
+        <translation locale="zh-Hant">手勢</translation>
+        <translation locale="ru">Жест</translation>
+    </string>
+    <string name="gboard_patches_spacebar_language_switch_enabled_title">
+        <translation locale="en">Enable swipe to switch languages</translation>
+        <translation locale="zh-Hant">啟用滑動切換語言</translation>
+        <translation locale="ru">Переключение языка свайпом</translation>
+    </string>
+    <string name="gboard_patches_spacebar_language_switch_enabled_summary">
+        <translation locale="en">Swipe left or right across the spacebar to switch to the previous or next enabled language. Restart Gboard after changing this setting.</translation>
+        <translation locale="zh-Hant">在空白鍵上向左或向右滑動，即可切換至上一個或下一個已啟用的語言。變更此設定後請重新啟動 Gboard。</translation>
+        <translation locale="ru">Проведите влево или вправо по пробелу, чтобы выбрать предыдущий или следующий включённый язык. После изменения настройки перезапустите Gboard.</translation>
+    </string>
+    <string name="gboard_patches_spacebar_language_switch_error_title">
+        <translation locale="en">Spacebar language swipe unavailable</translation>
+        <translation locale="zh-Hant">空白鍵滑動切換語言無法使用</translation>
+        <translation locale="ru">Переключение языка свайпом недоступно</translation>
+    </string>
+    <string name="gboard_patches_spacebar_language_switch_error_summary">
+        <translation locale="en">This build does not include the spacebar language swipe patch.</translation>
+        <translation locale="zh-Hant">此版本未包含空白鍵滑動切換語言修補程式。</translation>
+        <translation locale="ru">В этой сборке отсутствует патч переключения языка свайпом по пробелу.</translation>
     </string>
 </settings-text>
