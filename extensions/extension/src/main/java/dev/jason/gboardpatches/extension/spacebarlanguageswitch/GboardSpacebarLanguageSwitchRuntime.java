@@ -23,6 +23,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     private static final int SPACEBAR_VIEW_ID = 0x7f0b05b5;
     private static final int SPACE_KEYCODE = 62;
     private static final int PLAIN_TEXT_KEYCODE = -0x2719;
+    private static final int SPACEBAR_IME_PICKER_ACTION_CODE = -10022;
     private static final String TAG = "GboardSpacebarLang";
 
     private static final Map<ClassLoader, ReflectionHandles> REFLECTION_BY_LOADER =
@@ -33,6 +34,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     private static final class SpacebarSwipeState {
         final long downTime;
         boolean handled;
+        boolean nativeCursorDrag;
 
         SpacebarSwipeState(long downTime) {
             this.downTime = downTime;
@@ -221,8 +223,10 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                     SPACEBAR_SWIPE_STATES.put(tracker, state);
                 }
             }
-            if (state.handled) {
-                return true;
+            if (state.nativeCursorDrag || state.handled) {
+                // A completed language swipe remains consumed. A long-press cursor
+                // drag must always be forwarded to Gboard's original pointer handler.
+                return shouldConsumePointerMove(state.handled, state.nativeCursorDrag);
             }
 
             // qin.B() stores the original ACTION_DOWN coordinates in b/c.
@@ -257,12 +261,14 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 // Preserve movement in either axis and never turn this drag
                 // into a language switch.
                 synchronized (SPACEBAR_SWIPE_STATES) {
-                    state.handled = true;
+                    state.nativeCursorDrag = true;
                 }
-                Log.i(TAG, "Preserving native spacebar cursor drag"
+                Log.i(TAG, "Handing long-press spacebar drag to Gboard cursor control"
                         + " (held=" + heldDuration + "ms, dx=" + Math.round(deltaX)
                         + ", dy=" + Math.round(deltaY) + ")");
-                return true;
+                // Do not consume this move: qin.t() must continue so Gboard can
+                // update its native cursor-control session.
+                return false;
             }
 
             if (absX < touchSlop || absX <= absY * 1.2f) {
@@ -315,7 +321,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             }
             int eventCode = handles.actionDataKeycodeField.getInt(actionData);
             Object payload = handles.actionDataPayloadField.get(actionData);
-            if (eventCode != -10022 || !"space".equals(payload)) {
+            if (!isSpacebarLanguagePickerEvent(eventCode, payload)) {
                 return false;
             }
             Log.i(TAG, "Suppressed spacebar long-press language picker; "
@@ -325,6 +331,15 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Log.e(TAG, "Could not inspect spacebar long-press picker event", error);
             return false;
         }
+    }
+
+    static boolean shouldConsumePointerMove(boolean languageSwipeHandled,
+            boolean nativeCursorDrag) {
+        return languageSwipeHandled && !nativeCursorDrag;
+    }
+
+    static boolean isSpacebarLanguagePickerEvent(int eventCode, Object payload) {
+        return eventCode == SPACEBAR_IME_PICKER_ACTION_CODE && "space".equals(payload);
     }
 
     static int adjacentRotationIndex(int currentIndex, int itemCount, boolean next) {
