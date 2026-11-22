@@ -37,6 +37,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Collections.synchronizedMap(new WeakHashMap<ClassLoader, Long>());
     private static final long CURSOR_LONG_PRESS_WINDOW_MS = 5_000L;
     private static final long CURSOR_TRACKPAD_HOLD_MS = 850L;
+    private static final java.util.concurrent.atomic.AtomicInteger POINTER_DEBUG_LOG_COUNT =
+            new java.util.concurrent.atomic.AtomicInteger();
     private static final class SpacebarSwipeState {
         final long downTime;
         boolean handled;
@@ -246,10 +248,23 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         try {
             ReflectionHandles handles = reflectionHandles(classLoader);
             Object currentView = handles.pointerCurrentViewField.get(tracker);
+            boolean longPressPending = hasPendingSpacebarCursorLongPress(classLoader);
             if (!(currentView instanceof View spacebarView)
-                    || spacebarView.getId() != SPACEBAR_VIEW_ID
-                    || !GboardSpacebarLanguageSwitchSettings.readEnabled(
-                            spacebarView.getContext())) {
+                    || spacebarView.getId() != SPACEBAR_VIEW_ID) {
+                if (longPressPending) {
+                    logPointerDebug("MOVE ignored: currentView="
+                            + (currentView == null ? "null" : currentView.getClass().getName())
+                            + ", viewId=" + (currentView instanceof View
+                                    ? "0x" + Integer.toHexString(((View) currentView).getId())
+                                    : "n/a")
+                            + ", tracker=" + tracker.getClass().getName());
+                }
+                return false;
+            }
+            if (!GboardSpacebarLanguageSwitchSettings.readEnabled(spacebarView.getContext())) {
+                if (longPressPending) {
+                    logPointerDebug("MOVE ignored: spacebar swipe setting is disabled");
+                }
                 return false;
             }
 
@@ -264,6 +279,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             }
             if (state.nativeCursorDrag) {
                 // The original Gboard pointer handler owns cursor movement.
+                if (longPressPending) {
+                    logPointerDebug("MOVE passthrough: native cursor drag already active");
+                }
                 return false;
             }
             if (state.handled) {
@@ -298,11 +316,23 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             long cursorHoldThreshold = Math.max(
                     CURSOR_TRACKPAD_HOLD_MS,
                     (long) ViewConfiguration.getLongPressTimeout());
-            boolean dispatchedLongPress = hasPendingSpacebarCursorLongPress(classLoader);
+            boolean dispatchedLongPress = longPressPending;
+            if (dispatchedLongPress) {
+                logPointerDebug("MOVE on spacebar: tracker=" + tracker.getClass().getName()
+                        + ", viewId=0x" + Integer.toHexString(spacebarView.getId())
+                        + ", downTime=" + downTime
+                        + ", eventTime=" + motionEvent.getEventTime()
+                        + ", held=" + heldDuration + "ms"
+                        + ", dx=" + Math.round(deltaX) + ", dy=" + Math.round(deltaY)
+                        + ", touchSlop=" + touchSlop
+                        + ", cursorThreshold=" + cursorHoldThreshold + "ms");
+            }
             if (dispatchedLongPress && heldDuration < cursorHoldThreshold) {
                 // Gboard has recognized the long press, but cursor mode is not
                 // active until about one second of holding. Reserve the gesture:
                 // it must not fall through to our language-swipe recognizer.
+                logPointerDebug("MOVE held below cursor threshold: "
+                        + heldDuration + "/" + cursorHoldThreshold + "ms");
                 return false;
             }
             if (shouldStartCursorDrag(
@@ -313,6 +343,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 synchronized (SPACEBAR_SWIPE_STATES) {
                     state.nativeCursorDrag = true;
                 }
+                logPointerDebug("PROMOTED to native cursor drag: held=" + heldDuration
+                        + "ms, dx=" + Math.round(deltaX) + ", dy=" + Math.round(deltaY));
                 consumePendingSpacebarCursorLongPress(classLoader);
                 markPendingSpacebarCursorRelease(classLoader);
                 Log.i(TAG, "Entered native Gboard cursor trackpad"
@@ -386,6 +418,16 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     static boolean shouldConsumePointerMove(boolean languageSwipeHandled,
             boolean cursorDragHandled) {
         return languageSwipeHandled || cursorDragHandled;
+    }
+
+    private static void logPointerDebug(String message) {
+        try {
+            if (POINTER_DEBUG_LOG_COUNT.getAndIncrement() < 120) {
+                Log.i(TAG, "Cursor pointer diagnostic: " + message);
+            }
+        } catch (Throwable ignored) {
+            // Diagnostics must never affect Gboard's pointer processing.
+        }
     }
 
     private static void markPendingSpacebarCursorLongPress(ClassLoader classLoader) {
