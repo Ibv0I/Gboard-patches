@@ -19,6 +19,18 @@ public class GboardSpacebarLanguageSwitchRuntimeTest {
     }
 
     @Test
+    public void cursorMovementUsesSelectionEdgeAndClampsToEditorBounds() {
+        assertEquals(4, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
+                5, 8, -1, 0, 20));
+        assertEquals(9, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
+                5, 8, 1, 0, 20));
+        assertEquals(0, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
+                0, 0, -3, 0, 20));
+        assertEquals(20, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
+                20, 20, 3, 0, 20));
+    }
+
+    @Test
     public void onlySpacebarLanguagePickerEventIsSuppressed() {
         assertEquals(true,
                 GboardSpacebarLanguageSwitchRuntime.isSpacebarLanguagePickerEvent(
