@@ -19,6 +19,7 @@ import dev.jason.gboardpatches.extension.settings.GboardPatchesIcons;
 import dev.jason.gboardpatches.extension.settings.GboardPatchesSettingsContract;
 import dev.jason.gboardpatches.extension.settings.GboardSettingsText;
 import dev.jason.gboardpatches.extension.spacebarlogo.GboardSpacebarLogoSettingsFeature;
+import dev.jason.gboardpatches.extension.spacebarlanguageswitch.GboardSpacebarLanguageSwitchSettingsFeature;
 import dev.jason.gboardpatches.extension.symbolfooter.GboardSymbolFooterOrderSettingsFeature;
 import dev.jason.gboardpatches.extension.splitkeyboard.GboardSplitKeyboardSettingsFeature;
 import dev.jason.gboardpatches.extension.zhuyinbottomrow.GboardZhuyinBottomRowWeightSettingsFeature;
@@ -42,6 +43,7 @@ public final class GboardKeyboardLayoutSettingsGroupFeature
                         R.string.gboard_patches_group_keyboard_empty_summary),
                 Arrays.asList(
                         new GboardSpacebarLogoSettingsFeature(context),
+                        new GboardSpacebarLanguageSwitchSettingsFeature(context),
                         new GboardCloseProactiveSuggestionsSettingsFeature(context),
                         new GboardLatinGlobeKeyIgnoreIntervalSettingsFeature(context),
                         new GboardEnglishUppercaseToggleSettingsFeature(context),
