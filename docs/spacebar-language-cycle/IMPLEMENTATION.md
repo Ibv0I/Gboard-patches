@@ -16,7 +16,7 @@ Verified target APK: `18.5.4.993608717-release-arm64-v8a`
 The standalone patch is implemented on branch `feature/spacebar-language-cycle`.
 
 Implementation files:
-- `patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/keyboard/GboardSpacebarLanguageCycleBytecodePatch.kt`
+- `patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/keyboard/GboardSpacebarLanguageCyclePatch.kt`
 - `extensions/extension/src/main/java/dev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime.java`
 
 The patch uses the reviewed 18.5.4 bindings already present in the target profile and the existing `spacebar_language_cycle.touch` admission. Its lifecycle hooks are:

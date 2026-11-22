@@ -30,7 +30,7 @@ class GboardSpacebarLanguageCycleBytecodePatchTest {
     fun `patch delegates each lifecycle phase to the matching runtime method`() {
         val source = readSource(
             "src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/keyboard/" +
-                "GboardSpacebarLanguageCycleBytecodePatch.kt",
+                "GboardSpacebarLanguageCyclePatch.kt",
         )
         assertTrue(source.contains("SPACEBAR_LANGUAGE_SWIPE_BEGIN_FROM_DOWN"))
         assertTrue(source.contains("SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER"))
@@ -39,6 +39,9 @@ class GboardSpacebarLanguageCycleBytecodePatchTest {
         assertTrue(source.contains("SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL"))
         assertTrue(source.contains("SPACEBAR_LANGUAGE_SWIPE_CLEAR"))
         assertTrue(source.contains("qinPointerDispatchAction"))
+        assertTrue(source.contains("MutableClass(qilClass)"))
+        assertTrue(source.contains("candidate.inject()"))
+        assertTrue(source.contains("candidate.validatePatched()"))
         val runtime = readSource(
             "../extensions/extension/src/main/java/dev/jason/gboardpatches/extension/" +
                 "keyboard/GboardSpacebarLanguageSwipeRuntime.java",
