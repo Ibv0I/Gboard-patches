@@ -19,27 +19,15 @@ public class GboardSpacebarLanguageSwitchRuntimeTest {
     }
 
     @Test
-    public void cursorMovementUsesSelectionEdgeAndClampsToEditorBounds() {
-        assertEquals(4, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
-                5, 8, -1, 0, 20));
-        assertEquals(9, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
-                5, 8, 1, 0, 20));
-        assertEquals(0, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
-                0, 0, -3, 0, 20));
-        assertEquals(20, GboardSpacebarLanguageSwitchRuntime.targetCursorPosition(
-                20, 20, 3, 0, 20));
-    }
-
-    @Test
     public void cursorDragRequiresConfirmedLongPressAndMatchingHoldDuration() {
         assertEquals(true,
-                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(true, 500, 425));
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(true, 900, 850));
         assertEquals(false,
-                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(true, 200, 425));
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(true, 700, 850));
         assertEquals(false,
-                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(false, 800, 425));
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(false, 1000, 850));
         assertEquals(false,
-                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(false, 200, 425));
+                GboardSpacebarLanguageSwitchRuntime.shouldStartCursorDrag(false, 200, 850));
     }
 
     @Test
@@ -59,18 +47,18 @@ public class GboardSpacebarLanguageSwitchRuntimeTest {
     }
 
     @Test
-    public void languageSlideIsSuppressedOnlyDuringCursorLongPressOrDrag() {
+    public void nativeCursorSlidesArePassedThroughToGboard() {
         assertEquals(true,
-                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
-                        true, true, false));
-        assertEquals(true,
-                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
+                GboardSpacebarLanguageSwitchRuntime.shouldPassThroughNativeCursorSlide(
+                        true, true, true));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldPassThroughNativeCursorSlide(
                         true, false, true));
         assertEquals(false,
-                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
-                        true, false, false));
+                GboardSpacebarLanguageSwitchRuntime.shouldPassThroughNativeCursorSlide(
+                        true, true, false));
         assertEquals(false,
-                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
+                GboardSpacebarLanguageSwitchRuntime.shouldPassThroughNativeCursorSlide(
                         false, true, true));
     }
 
