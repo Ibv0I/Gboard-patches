@@ -41,6 +41,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             new java.util.concurrent.atomic.AtomicInteger();
     private static final java.util.concurrent.atomic.AtomicInteger POINTER_ENTRY_DEBUG_LOG_COUNT =
             new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicInteger POINTER_EVENT_DEBUG_LOG_COUNT =
+            new java.util.concurrent.atomic.AtomicInteger();
     private static final class SpacebarSwipeState {
         final long downTime;
         boolean handled;
@@ -241,6 +243,18 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     public static boolean maybePromoteSpacebarHorizontalSwipe(Object tracker,
             MotionEvent motionEvent, int pointerIndex) {
         if (tracker != null && motionEvent != null
+                && POINTER_EVENT_DEBUG_LOG_COUNT.getAndIncrement() < 120) {
+            int action = motionEvent.getActionMasked();
+            Log.i(TAG, "Cursor pointer event: tracker=" + tracker.getClass().getName()
+                    + ", action=" + pointerActionName(action)
+                    + ", actionMasked=" + action
+                    + ", actionIndex=" + motionEvent.getActionIndex()
+                    + ", pointerIndex=" + pointerIndex
+                    + ", pointerCount=" + motionEvent.getPointerCount()
+                    + ", downTime=" + motionEvent.getDownTime()
+                    + ", eventTime=" + motionEvent.getEventTime());
+        }
+        if (tracker != null && motionEvent != null
                 && motionEvent.getActionMasked() == MotionEvent.ACTION_MOVE
                 && POINTER_ENTRY_DEBUG_LOG_COUNT.getAndIncrement() < 40) {
             ClassLoader pointerLoader = tracker.getClass().getClassLoader();
@@ -440,6 +454,19 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         } catch (Throwable error) {
             Log.e(TAG, "Could not inspect spacebar long-press picker event", error);
             return false;
+        }
+    }
+
+    private static String pointerActionName(int action) {
+        switch (action) {
+            case MotionEvent.ACTION_DOWN: return "DOWN";
+            case MotionEvent.ACTION_UP: return "UP";
+            case MotionEvent.ACTION_MOVE: return "MOVE";
+            case MotionEvent.ACTION_CANCEL: return "CANCEL";
+            case MotionEvent.ACTION_OUTSIDE: return "OUTSIDE";
+            case MotionEvent.ACTION_POINTER_DOWN: return "POINTER_DOWN";
+            case MotionEvent.ACTION_POINTER_UP: return "POINTER_UP";
+            default: return "OTHER";
         }
     }
 
