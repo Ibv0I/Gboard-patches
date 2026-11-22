@@ -43,8 +43,8 @@ class GboardSpacebarLanguageCycleBytecodePatchTest {
             "../extensions/extension/src/main/java/dev/jason/gboardpatches/extension/" +
                 "keyboard/GboardSpacebarLanguageSwipeRuntime.java",
         )
-        assertTrue(runtime.contains("isPressAction(stockAction"))
-        assertTrue(runtime.contains("Do not steal LONG_PRESS"))
+        assertTrue(runtime.contains("isReplaceablePressAction(owner, stockAction"))
+        assertTrue(runtime.contains("gestureState != longPress && gestureState != doubleTap"))
     }
 
     @Test
