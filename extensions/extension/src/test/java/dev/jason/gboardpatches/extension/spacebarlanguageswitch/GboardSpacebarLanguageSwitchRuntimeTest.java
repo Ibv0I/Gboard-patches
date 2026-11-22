@@ -7,14 +7,14 @@ import org.junit.Test;
 public class GboardSpacebarLanguageSwitchRuntimeTest {
 
     @Test
-    public void nativeCursorDragIsPassedThroughToGboard() {
+    public void cursorDragIsHandledWithoutRetargetingTheSpacebarPointer() {
         assertEquals(false,
                 GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(false, false));
         assertEquals(true,
                 GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(true, false));
-        assertEquals(false,
+        assertEquals(true,
                 GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(false, true));
-        assertEquals(false,
+        assertEquals(true,
                 GboardSpacebarLanguageSwitchRuntime.shouldConsumePointerMove(true, true));
     }
 
