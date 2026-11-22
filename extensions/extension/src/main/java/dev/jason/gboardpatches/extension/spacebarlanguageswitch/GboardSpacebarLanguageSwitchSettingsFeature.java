@@ -70,12 +70,10 @@ public final class GboardSpacebarLanguageSwitchSettingsFeature
             GboardSpacebarLanguageSwitchSettings.ensureDefault(preferences);
             boolean enabled = GboardSpacebarLanguageSwitchSettings.readEnabled(preferences);
             return buildScreenForState(enabled, value -> {
-                if (GboardSpacebarLanguageSwitchSettings.writeEnabled(context, value)) {
-                    GboardPatchesSettingsContract.refresh(host);
-                } else {
+                if (!GboardSpacebarLanguageSwitchSettings.writeEnabled(context, value)) {
                     Log.w(TAG, "Failed to save spacebar language switch setting");
-                    GboardPatchesSettingsContract.refresh(host);
                 }
+                GboardPatchesSettingsContract.refresh(host);
             });
         } catch (Throwable failure) {
             Log.w(TAG, "Failed to render spacebar language switch settings", failure);
@@ -106,6 +104,23 @@ public final class GboardSpacebarLanguageSwitchSettingsFeature
                                                 GboardSpacebarLanguageSwitchSettings
                                                         .PREF_KEY_ENABLED)))),
                 GboardPatchesSettingsContract.RefreshPolicy.none(),
-                GboardPatchesSettingsContract.PanelStyle.FLAT);(context, resourceId);
+                GboardPatchesSettingsContract.PanelStyle.FLAT);
+    }
+
+    private GboardPatchesSettingsContract.Screen errorScreen() {
+        return new GboardPatchesSettingsContract.Screen(
+                title,
+                badge,
+                title,
+                summary,
+                Collections.singletonList(new GboardPatchesSettingsContract.StatusBlock(
+                        errorTitle,
+                        errorSummary,
+                        GboardPatchesSettingsContract.StatusTone.WARNING)),
+                Collections.emptyList());
+    }
+
+    private static String text(Context context, int resourceId) {
+        return GboardSettingsText.get(context, resourceId);
     }
 }
