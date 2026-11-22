@@ -131,9 +131,6 @@ internal object GboardContributionWiring {
             unit("spacebar_language_switch.pointer") {
                 arrayOf(gboardSpacebarLanguageSwitchPointerPatch)
             },
-            unit("spacebar_language_switch.picker_guard") {
-                arrayOf(gboardSpacebarLanguageSwitchPickerPatch)
-            },
             unit("spacebar_language_switch.gesture") {
                 arrayOf(gboardSpacebarLanguageSwitchGesturePatch)
             },
