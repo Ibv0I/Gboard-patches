@@ -135,7 +135,7 @@ has been evaluated. The extension's `cursorOwnsPointer` argument must represent 
 
 For up, keep the `qin.G(...)` trackpad decision untouched. Only after it returns false may the extension finish run. If finish returns true, branch over exactly the ordinary `qin.u(...)` invocation while retaining the following stock action bookkeeping, delayed-action handling, trace-finally path, and final owner cleanup. The cancel path in `qil.i` must clear rather than finish.
 
-These are source-confirmed lifecycle requirements. They do not yet constitute verified DEX instruction indices/register operands, so the feature remains disabled pending instruction-level decoding and candidate verification.
+Historical status at the time of this source audit: the bytecode transformation had not yet been implemented. The current implementation and its remaining build/device verification status are recorded in the opening "Safeguards and current implementation limits" and "Current status" sections.
 
 ## Clarified control-flow semantics from the complete decompiled methods
 
@@ -191,7 +191,7 @@ as part of this inspection.
 
 ## APK DEX code-item inventory (18.5.4 arm64 target)
 
-The supplied APK was unpacked and the DEX header/class-data/method-id tables were parsed locally. This establishes concrete code-item locations and register/insn counts for the target methods; it is not yet a full instruction disassembly or a mutation anchor.
+The supplied APK was unpacked and the DEX header/class-data/method-id tables were parsed locally. This establishes concrete code-item locations and register/insn counts for the target methods. The later decoded-anchor sections record the instruction references and register words used to implement the current transformation.
 
 APK SHA-256: `0bbc448e570f4042692c850f8b5a19458e009d245c5f099bff3c0415574c2402`.
 
@@ -252,7 +252,7 @@ The instruction streams in the code items above were decoded to identify invoke 
 | | 5 | `Lqin;->r(J,I)V` | v0..v3 |
 | | 8 | `Lqin;->ac()V` | v0 |
 
-These anchors show that the UP completion call at `qil.t` is at instruction offset 56, and the normal action dispatch is at offset 115. They also show the reset and pooling call sites. They do **not** by themselves authorize insertion: the implementation must still decode and validate all branch targets and try/catch ranges, preserve the stock trackpad branch, and reserve scratch registers safely. In particular, the invoke at `qil.t:56` is the native `G` gate, not the action dispatch; the extension's finish decision must be placed only on its false-return path, before the `qin.u` dispatch at offset 115.
+These anchors were used to check the current implementation. The invoke at `qil.t:56` is the native `G` cursor/trackpad gate, not the action dispatch; the resolver is inserted before the `qin.u` call at offset 115, which is reachable only when `G` returns false. Register words are resolved from the actual mutable invoke instructions. The current patch does not rewrite the branch graph or exception table; it replaces the ActionDef argument with null on a successful switch, allowing the original `qin.u` null guard and subsequent cleanup to run.
 
 
 
