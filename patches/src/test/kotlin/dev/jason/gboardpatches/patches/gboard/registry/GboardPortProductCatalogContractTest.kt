@@ -52,7 +52,7 @@ class GboardPortProductCatalogContractTest {
     @Test
     fun catalogIsDeterministicAndDeclaresSelectedOnlyZeroSelectionComposition() {
         assertEquals("gboard-port-product-catalog.v1", catalog["format"].asString)
-        assertEquals("1.22.0", catalog["catalog_version"].asString)
+        assertEquals("1.23.0", catalog["catalog_version"].asString)
         val composition = catalog.getAsJsonObject("composition")
         assertEquals(
             setOf("selected_only_call_chain", "runtime_feature_mask"),
@@ -322,6 +322,7 @@ class GboardPortProductCatalogContractTest {
                 "english_qwerty_up_flick_uppercase.pointer" to lifecycle,
                 "long_press_editing_shortcuts.pointer" to
                     lifecycle,
+                "spacebar_language_switch.pointer" to lifecycle,
                 "swipeable_custom_top_row.pointer" to lifecycle,
                 "zhuyin_slide_input.pointer" to lifecycle,
             ),
@@ -341,6 +342,9 @@ class GboardPortProductCatalogContractTest {
                     "LONG_PRESS_QUICK_ACTIONS_RUNTIME_MAYBE_ENSURE_LONG_PRESS_SCHEDULED",
                     "LONG_PRESS_QUICK_ACTIONS_RUNTIME_ON_GLOBE_POINTER_FINISH",
                     "LONG_PRESS_QUICK_ACTIONS_RUNTIME_ON_GLOBE_POINTER_CANCEL",
+                ),
+                "spacebar_language_switch.pointer" to listOf(
+                    "SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_PROMOTE_POINTER_SWIPE",
                 ),
                 "swipeable_custom_top_row.pointer" to listOf(
                     "TOP_ROW_SWIPE_RUNTIME_MAYBE_ARM_AND_RESOLVE_TOP_ROW_OWNER",
