@@ -86,17 +86,6 @@ public final class GboardSpacebarLanguageSwitchSettingsFeature
     GboardPatchesSettingsContract.Screen buildScreenForState(
             boolean enabled,
             GboardPatchesSettingsContract.ToggleAction toggleAction) {
-        GboardPatchesSettingsContract.ToggleRow row =
-                new GboardPatchesSettingsContract.ToggleRow(
-                        enabledTitle,
-                        enabledSummary,
-                        true,
-                        enabled,
-                        toggleAction)
-                        .setMasterToggle(true)
-                        .setRestartRequired(
-                                GboardSpacebarLanguageSwitchSettings.PREF_KEY_ENABLED);
-
         return new GboardPatchesSettingsContract.Screen(
                 title,
                 badge,
@@ -105,25 +94,18 @@ public final class GboardSpacebarLanguageSwitchSettingsFeature
                 Collections.emptyList(),
                 Collections.singletonList(new GboardPatchesSettingsContract.Section(
                         section,
-                        Collections.singletonList(row))),
+                        Collections.singletonList(
+                                new GboardPatchesSettingsContract.ToggleRow(
+                                        enabledTitle,
+                                        enabledSummary,
+                                        true,
+                                        enabled,
+                                        toggleAction)
+                                        .setMasterToggle(true)
+                                        .setRestartRequired(
+                                                GboardSpacebarLanguageSwitchSettings
+                                                        .PREF_KEY_ENABLED)))),
                 GboardPatchesSettingsContract.RefreshPolicy.none(),
-                GboardPatchesSettingsContract.PanelStyle.FLAT);
-    }
-
-    private GboardPatchesSettingsContract.Screen errorScreen() {
-        return new GboardPatchesSettingsContract.Screen(
-                title,
-                badge,
-                title,
-                summary,
-                Collections.singletonList(new GboardPatchesSettingsContract.StatusBlock(
-                        errorTitle,
-                        errorSummary,
-                        GboardPatchesSettingsContract.StatusTone.WARNING)),
-                Collections.emptyList());
-    }
-
-    private static String text(Context context, int resourceId) {
-        return GboardSettingsText.get(context, resourceId);
+                GboardPatchesSettingsContract.PanelStyle.FLAT);(context, resourceId);
     }
 }
