@@ -126,7 +126,7 @@ private fun MutableMethod.injectSpacebarActionResolver() {
     ) {
         "Refusing unexpected action-up method $definingClass->$name"
     }
-    check(accessFlags and 0x8 != 0) {
+    check((accessFlags and 0x8) != 0) {
         "Expected static action-up method for $definingClass->$name"
     }
 

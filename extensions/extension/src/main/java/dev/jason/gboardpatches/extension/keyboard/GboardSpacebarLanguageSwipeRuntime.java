@@ -81,9 +81,10 @@ public final class GboardSpacebarLanguageSwipeRuntime {
             float x = event.getX(pointerIndex);
             float y = event.getY(pointerIndex);
             Object cursor = field(owner, "q").get(owner);
+            // qsl.c() mutates cursor gesture state; qsl.b() is its side-effect-free
+            // ownership predicate and matches the guard used by Gboard's UP handler.
             boolean cursorOwns = cursor != null && Boolean.TRUE.equals(
-                    cursor.getClass().getMethod("c", float.class, float.class, boolean.class)
-                            .invoke(cursor, x, y, false));
+                    cursor.getClass().getMethod("b").invoke(cursor));
             observe(owner, x, y, cursorOwns);
         } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
             observe(owner, Float.NaN, Float.NaN, true);
