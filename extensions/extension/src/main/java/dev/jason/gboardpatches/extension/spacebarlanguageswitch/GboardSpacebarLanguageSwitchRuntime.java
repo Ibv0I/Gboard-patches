@@ -415,31 +415,6 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     }
 
     /**
-     * Prevent Gboard's generic long-press popup from taking ownership of the
-     * spacebar pointer stream. The native cursor path needs subsequent MOVE
-     * events to remain routed through qin.t().
-     */
-    public static boolean maybeSuppressSpacebarLongPressPopup(Object tracker) {
-        if (tracker == null) {
-            return false;
-        }
-        try {
-            ReflectionHandles handles = reflectionHandles(tracker.getClass().getClassLoader());
-            Object currentView = handles.pointerCurrentViewField.get(tracker);
-            if (!(currentView instanceof View spacebarView)
-                    || spacebarView.getId() != SPACEBAR_VIEW_ID) {
-                return false;
-            }
-            Log.i(TAG, "Suppressed stock spacebar long-press popup before it intercepts "
-                    + "native cursor movement");
-            return true;
-        } catch (Throwable error) {
-            Log.e(TAG, "Could not inspect the key before suppressing its long-press popup", error);
-            return false;
-        }
-    }
-
-    /**
      * Suppresses only the spacebar long-press input-method picker request.
      * Other picker sources (globe key, accessibility, etc.) remain untouched.
      */
