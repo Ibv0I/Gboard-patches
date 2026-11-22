@@ -48,12 +48,15 @@ public class GboardCursorTrackpadPreferenceTest {
         assertFalse(GboardCursorTrackpadRuntime.applyPreference(false, prefs));
     }
 
-    @Test public void wrongStringWrongResourceAndMissingStoragePreserveStock() {
+    @Test public void wrongStringAndWrongResourcePreserveStockButMissingStorageUsesDefault() {
         assertFalse(GboardCursorTrackpadRuntime.applyBooleanPreference("unrelated", false));
         assertFalse(GboardCursorTrackpadRuntime.applyResourceBooleanPreference(0x7f140996, false));
         assertTrue(GboardCursorTrackpadRuntime.applyBooleanPreference("unrelated", true));
         assertTrue(GboardCursorTrackpadRuntime.applyResourceBooleanPreference(0, true));
-        assertFalse(GboardCursorTrackpadRuntime.applyPreference(false, null));
+        // Early Gboard flag/resource reads may happen before an Application
+        // context is available. Missing preferences therefore use the declared
+        // enabled-by-default value, rather than silently disabling cursor mode.
+        assertTrue(GboardCursorTrackpadRuntime.applyPreference(false, null));
         assertTrue(GboardCursorTrackpadRuntime.applyPreference(true, null));
     }
 }
