@@ -11,11 +11,24 @@ Verified target APK: `18.5.4.993608717-release-arm64-v8a`
 - Existing long-press spacebar cursor/trackpad behavior must remain available.
 - Only a horizontal gesture past a movement threshold is consumed.
 
-## Current status
+## Current status — 22 November 2026
 
-The supplied JADX `sources.zip` has been extracted and inspected. The correct built-in Gboard language-switch path has been identified. The gesture interception point is narrowed to the `qin` pointer session, but no runtime patch has been implemented or built yet.
+The standalone patch is implemented on branch `feature/spacebar-language-cycle`.
 
-Do not ship this as a working patch until the exact DEX transformation is implemented, bundle validation passes, and the target APK is tested on-device.
+Implementation files:
+- `patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/keyboard/GboardSpacebarLanguageCycleBytecodePatch.kt`
+- `extensions/extension/src/main/java/dev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime.java`
+
+The patch uses the reviewed 18.5.4 bindings already present in the target profile and the existing `spacebar_language_cycle.touch` admission. Its lifecycle hooks are:
+
+- **DOWN:** immediately after `qin.F(MotionEvent,int)`, recognize the original `SoftKeyView` only when its exact `PRESS` action has keycode 62.
+- **MOVE:** immediately after `qin.t(MotionEvent,int)`, observe the active pointer and abandon the custom gesture when the cursor controller's side-effect-free `qsl.b()` eligibility predicate is true. This is deliberately conservative: it may decline a swipe while cursor UI is available rather than risk taking over cursor behavior.
+- **UP:** immediately before the existing `qin.u(...)` call in private static `qil.t(...)`, resolve the matching pointer session. The runtime consumes only an `ACTION_UP` / `ACTION_POINTER_UP` for the same pointer, a final horizontal displacement that dominates vertical movement, a `PRESS` action, and a state that is neither `LONG_PRESS` nor `DOUBLE_TAP`. A successful native Gboard rotation returns a null `ActionDef`; `qin.u(null,...)` is a stock no-op, so the original bookkeeping and cleanup continue unchanged.
+- **Cleanup:** cancel, pointer reset, keyboard teardown, and `qin.A(...)` clear session state.
+
+Language switching uses Gboard's own `pga.F(context).t(true,pfi.d)` operation. The Android system-level IME switch API is not used.
+
+Runtime and patch-shape tests have been added, including a regression test that later vertical movement revokes a previously qualified horizontal movement. **The Gradle build and tests have not been run in this environment, the patched bundle has not been inspected, and the APK has not been tested on the OnePlus 13T.** Treat the branch as an implementation candidate, not as a verified installable build.
 
 ## Confirmed next-language implementation
 
@@ -79,14 +92,13 @@ The current `gboard-version-bindings.json` contains these Gboard 18.5.4 bindings
 
 These identify the pointer lifecycle but are not themselves a completed patch.
 
-## Next implementation checks
+## Remaining verification
 
-1. Inspect the complete `qil` touch dispatch sequence and the exact `qin` pointer-up/cancel lifecycle.
-2. Confirm how the `SoftKeyView` ID is preserved when the pointer moves outside the spacebar.
-3. Determine whether horizontal cursor movement on the spacebar uses the same `qsl` session, and ensure the new gesture never takes ownership after that session starts.
-4. Inspect the patch framework's smali transformation conventions and version-binding schema.
-5. Implement the smallest bytecode patch for the exact 18.5.4 target. Avoid patching `pad.java`; it is the Smart Compose swipe extension, not the language switch handler.
-6. Build and validate the patch bundle, then test tap, left/right swipe, long-press cursor movement, pointer cancellation, and layouts with more than two languages on-device.
+1. Run the extension and patch-module test suites and fix any compile or test failures.
+2. Build the Morphe patch bundle and inspect the emitted DEX to confirm that the new calls are present with valid register operands and preserved exception handlers.
+3. Install on the target Gboard build and test: tap, left/right swipe, vertical movement, long press, double tap, cursor/trackpad movement, cancel, additional pointers, and more than two configured languages.
+
+The code currently resolves method targets from generated bindings, extracts registers from the exact invoke instructions, and fails closed when expected call anchors are missing or duplicated. It does **not yet provide a full post-mutation control-flow fingerprint or copied-class transactional verifier**; that remains part of the pre-release verification work.
 
 ## Gesture policy
 
@@ -123,7 +135,7 @@ Do not suppress the stock move handler before it gets a chance to service `this.
 5. On pointer finish, dispatch the next-language action once only if armed; otherwise allow the stock completion path (short tap / normal key behavior).
 6. Clear state on pointer cancel and reset.
 
-The exact best hook is still under evaluation. Existing top-row swipe code demonstrates the project's supported pointer-owner delegate pattern and runtime ABI calls, but its owner-retarget behavior cannot be copied blindly because this feature must preserve the original spacebar identity and coexist with the cursor trackpad.
+The selected hook is a separate `qil` dispatcher transformation rather than the shared pointer-owner composer: DOWN follows `qin.F`, MOVE follows `qin.t`, and UP is resolved immediately before `qin.u`. This preserves the original spacebar object even if stock movement retargets `qin.m`.
 
 ## Patch-framework patterns found in this fork
 
@@ -135,7 +147,7 @@ The exact best hook is still under evaluation. Existing top-row swipe code demon
 
 ## Current conclusion
 
-The language-switch target is confirmed, and the event lifecycle is now mapped. The remaining design risk is preserving the original spacebar owner while distinguishing a normal horizontal swipe from the cursor trackpad. No DEX patch has been committed yet.
+The DEX patch and runtime are now committed on the feature branch. The original spacebar identity is retained, pointer IDs are checked on release, and a successful gesture suppresses only the normal action by passing `null` to Gboard's existing `qin.u(...)` method. Long-press and double-tap states are explicitly excluded. Build, bundle inspection, and device validation remain outstanding.
 
 ## Extension module integration findings (21 Nov 2026)
 
@@ -161,10 +173,9 @@ It inserts a runtime call into the shared pointer-owner method and adds finish/c
 
 The extension runtime uses weak-keyed session maps and defensive exception handling for reflective access. This is a useful implementation convention, but the top-row swipe's owner-retargeting strategy is not directly suitable for the spacebar feature: the spacebar gesture must retain the original pointer-down view while stock cursor movement remains authoritative.
 
-### Remaining implementation decision
+### Resolved implementation decision
 
-The safest implementation still needs a verified observation point that sees pointer movement after the stock cursor ownership decision, plus a completion hook that can suppress the normal space key action only when the custom gesture was armed. The current pointer-owner composer only patches the `qin` owner method and lifecycle methods; it does not automatically provide access to every `qin` movement callback or the `qil` completion dispatcher. Do not implement a speculative pointer-up-only hook: active-key retargeting makes it unsafe.
-
+The implementation uses a dedicated `qil` patch because the shared pointer-owner composer does not expose all required dispatcher phases. The feature remains independent of the top-row swipe toggle. MOVE observation is conservative around cursor UI; UP interception is anchored at the stock `qin.u(...)` invocation so the native `qin.G(...)` cursor guard and all later cleanup remain in place.
 
 ## Exact 18.5.4 move and finish code (JADX confirmation)
 
@@ -230,11 +241,11 @@ A robust consume hook can therefore be inserted immediately before the `qin.u(..
 
 ### Implementation boundary
 
-The JADX Java source is enough to identify semantic insertion points, but it is not enough to author a safe smali transformation: exact instruction indexes, register assignments, branch labels, method access flags, and try/catch boundaries must be checked against the actual target DEX and the repository's generated version bindings. The next implementation task is to add explicit 18.5.4 bindings and shape verifiers for `qil.h` and the private static `qil.t`, then build tests for the injected branch layout before adding runtime behavior. Until those checks exist, no executable patch should be committed.
+The current patch is anchored to generated method bindings and resolves argument registers from the exact `qin.F`, `qin.t`, and `qin.u` invoke instructions rather than relying on hard-coded register numbers. It leaves the original `qil.t` try/catch and post-action control flow intact because it replaces the ActionDef argument instead of inserting a branch around the action call. The patch does not yet perform a full post-mutation control-flow fingerprint or copied-class transactional verification; those checks, plus a real build and device test, remain outstanding.
 
 
 
-## Concrete 18.5.4 method targets for the next bytecode preflight
+## Historical 18.5.4 method-target research (pre-implementation notes)
 
 The supplied decompilation identifies these exact source-level signatures (DEX access flags and code-item shapes still need to be verified from the APK):
 
@@ -246,16 +257,9 @@ The supplied decompilation identifies these exact source-level signatures (DEX a
 
 The move method is a dispatcher over active `qin` sessions, so its loop registers cannot be assumed to match the pointer-owner method's register contract. The completion method is private static and is not exposed by the current pointer-owner transformation context. Both require independent shape verifiers and transactional preflight before mutation.
 
-### Required implementation order
+### Verification status for the implementation above
 
-1. Read the target APK's DEX method definitions and code items for the three methods above. Do not infer access flags or register numbers from JADX Java output.
-2. Add explicit 18.5.4 method bindings and semantic shape checks. Fail closed if the method descriptors, access flags, register counts, key field references, cursor guard, or completion call sequence drift.
-3. Add a dedicated `qil` transformation that composes safely with the existing `qin` pointer-owner transformation. Preflight all target methods first, mutate a candidate class, verify the candidate, then commit.
-4. Add runtime ABI entries and the extension runtime only after the bytecode call sites and argument registers are proven.
-5. Add patch-shape tests for the exact stock sequence and for the inserted consume branch. Test the normal tap, both swipe directions, cursor movement, vertical movement, cancellation, and repeated pointer sessions.
-6. Build the extension and patch bundle; inspect the resulting DEX to ensure the branch lands after the stock completion cleanup and does not cross a try/catch boundary incorrectly.
-
-No executable patch is claimed at this stage. The next commit should be the verified `qil` bytecode preflight and shape tests, not a speculative runtime gesture implementation.
+The method bindings, runtime ABI entries, dedicated `qil` patch, and patch-shape tests are now present in the feature branch. The original `qin.u(...)` call is retained and receives a null ActionDef only when the runtime confirms the gesture and native language rotation succeeds. The next verification steps are to compile/test the modules, inspect the resulting DEX, and test on-device; no successful build or device result is claimed yet.
 
 
 ## Target APK DEX inspection (directly read from supplied APK)

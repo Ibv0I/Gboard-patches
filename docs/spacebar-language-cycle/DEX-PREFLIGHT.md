@@ -3,7 +3,7 @@
 Target branch: `feature/spacebar-language-cycle`  
 Target APK: `Google Gboard 18.5.4.993608717-release-arm64-v8a`
 
-This document records the bytecode facts verified against the supplied APK. It is a preflight artifact, **not an executable patch**.
+This document records the bytecode facts verified against the supplied APK and the current implementation anchors. The DEX transformation is now implemented in the feature branch, but its Gradle build, emitted bundle, and on-device behavior have not yet been verified.
 
 ## Exact method bindings
 
@@ -53,26 +53,26 @@ reflectively and returns false on failure, preserving the ordinary space action.
 
 The APK's internal action dispatcher `pvd.m(ohe)` recognizes action code `-10011` as `SWITCH_TO_NEXT_LANGUAGE`. It reaches `pga.t(true, pfi.d)`, which rotates Gboard's active language/layout list. This is the intended operation; using Android's system-level next-input-method API would not implement the requested Gboard layout cycle.
 
-## Required safeguards before enabling a bytecode mutation
+## Safeguards and current implementation limits
 
-The offsets above are code-unit anchors, not permission to insert instructions blindly. The implementation must still resolve and assert the exact instruction objects, branch targets, field/method references, and try/catch boundaries in the target class. It must mutate a copied candidate class, verify the candidate, and commit only after all checks pass.
+The implementation uses generated method bindings and checks that the expected invoke targets are unique before adding delegates. It extracts the live argument registers from those invoke instructions, avoiding hard-coded register numbers. The UP resolver is inserted immediately before the existing `qin.u(...)` invocation and passes either the original ActionDef or `null`; it does not alter the original branch targets or try/catch ranges.
 
-In particular, the `qil.h` observer must be inserted after the actual cursor-ownership branch, and the `qil.t` consume branch must jump to the existing post-`qin.u` cleanup block without crossing or changing try/catch coverage.
+The move observer is placed immediately after `qin.t(MotionEvent,int)`. It uses the side-effect-free `qsl.b()` predicate as a conservative guard and cancels the custom gesture when the cursor controller is available. It does not duplicate the state-mutating `qsl.c(...)` hit-test.
+
+Remaining limitations: there is no full copied-class transactional preflight or post-mutation control-flow fingerprint yet. The patch module and extension tests have been added but have not been run here. The built patch bundle has not been inspected and the target APK has not been tested on-device.
 
 ## Current status
 
 - [x] Target method descriptors and DEX locations recorded.
-- [x] Access flags, register counts, incoming/outgoing words, and try-block counts verified.
-- [x] Cursor predicate and stock action call-site offsets recorded.
-- [x] Gboard's internal next-language action identified.
-- [ ] Add generated version bindings for `qil.c`, `qil.h`, and `qil.t`.
-- [ ] Implement fail-closed semantic shape verifiers and candidate-class preflight.
-- [ ] Add runtime gesture state and ABI calls.
-- [ ] Build and inspect the patched bundle.
-- [ ] Test on the OnePlus 13T (not yet tested).
+- [x] Reviewed `qil` / `qin` method bindings and target admission present.
+- [x] Runtime gesture state and runtime ABI calls implemented.
+- [x] Dedicated `qil` bytecode patch added for DOWN, MOVE, UP, cancel, reset, close, and pointer clearing.
+- [x] Patch-shape and runtime regression tests added.
+- [ ] Run the extension and patch-module Gradle tests.
+- [ ] Build the Morphe patch bundle and inspect the resulting DEX.
+- [ ] Test tap, left/right swipe, vertical movement, long press, double tap, cursor/trackpad, pointer cancellation/replacement, and multi-language cycling on the OnePlus 13T.
 
-No working patch is claimed until the remaining steps are complete.
-
+No successful build, installable APK, or on-device result is claimed yet.
 
 ## APK verification: 18.5.4.993608717 arm64
 
@@ -283,8 +283,8 @@ The following offsets are code-unit offsets in the original instruction array. C
 - offset 50 reads the current `SoftKeyDef`; offset 54 branches back to 16 when it is null.
 - offset 56 invokes `qin.G(MotionEvent,SoftKeyDef,int,int)`.
 - offset 60 branches back to 16 when `G` returns true. This is the native trackpad/cursor-owned path and must remain untouched.
-- When `G` returns false, execution falls through at 62 into the normal action-resolution path. The extension finish decision belongs on this false-return path, before the normal `qin.u(...)` action dispatch at offset 115.
-- A successful extension finish may skip only the stock `qin.u(...)` dispatch. It must rejoin the existing bookkeeping/delayed-action/trace cleanup flow; it must not bypass the catch-all handler or trace end.
+- When `G` returns false, execution falls through at 62 into the normal action-resolution path. The resolver is inserted before the normal `qin.u(...)` action dispatch at offset 115.
+- On success, the resolver passes a null ActionDef to `qin.u(...)`. That method immediately returns for null, after which the original bookkeeping/delayed-action/trace cleanup flow continues without a new branch or altered catch-all handler.
 - The final trace end is at offset 254; the normal return is at 268. The catch-all handler begins at 269 and rethrows after ending the trace.
 
 ### DOWN and MOVE handler exception ranges
@@ -302,4 +302,4 @@ The following offsets are code-unit offsets in the original instruction array. C
 - `qin.s(long)` invokes `qsl.a(long)` at offset 4 and `qio.k()` at offset 9.
 - `qin.A(long,int)` invokes `qio.p(qin)` at offset 2, `qin.r(long,int)` at offset 5, and `qin.ac()` at offset 8.
 
-These facts establish semantic insertion regions but are not yet a transformation specification: register read/write liveness, exact branch conditions, try-handler relocation, and post-transform structural fingerprints must still be validated before bytecode mutation is enabled.
+These facts are the source-level and DEX anchors used by the current implementation. The patch dynamically extracts invoke registers and does not relocate try handlers or branch targets. Full post-transform structural verification, build/test execution, emitted-DEX inspection, and device testing are still required before treating the patch as release-ready.
