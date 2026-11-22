@@ -115,6 +115,7 @@ public final class GboardSettingsGroupingTest {
                 "new GboardSwipeDismissSettingsFeature(context)");
         assertInOrder(layoutGroupSource.substring(layoutGroupSource.indexOf("Arrays.asList(")),
                 "new GboardSpacebarLogoSettingsFeature(context)",
+                "new GboardSpacebarLanguageSwitchSettingsFeature(context)",
                 "new GboardCloseProactiveSuggestionsSettingsFeature(context)",
                 "new GboardLatinGlobeKeyIgnoreIntervalSettingsFeature(context)",
                 "new GboardEnglishUppercaseToggleSettingsFeature(context)",
@@ -157,6 +158,9 @@ public final class GboardSettingsGroupingTest {
         Assert.assertTrue(availabilitySource.contains(
                 "dev.jason.gboardpatches.feature.access_point_count"));
         Assert.assertTrue(availabilitySource.contains("FEATURE_SWIPE_DISMISS"));
+        Assert.assertTrue(availabilitySource.contains("FEATURE_SPACEBAR_LANGUAGE_SWITCH"));
+        Assert.assertTrue(availabilitySource.contains(
+                "dev.jason.gboardpatches.feature.spacebar_language_switch"));
         Assert.assertTrue(availabilitySource.contains(
                 "dev.jason.gboardpatches.feature.swipe_dismiss"));
     }

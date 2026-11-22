@@ -23,6 +23,7 @@ import dev.jason.gboardpatches.patches.gboard.features.languagemodels.gboardLang
 import dev.jason.gboardpatches.patches.gboard.features.quickinsert.gboardQuickInsertFlagValuePatch
 import dev.jason.gboardpatches.patches.gboard.features.longpressquickactions.gboardLongPressQuickActionsSoftKeyPatch
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlogo.gboardSpacebarLogoSoftKeyPatch
+import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchSoftKeyPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeSoftKeyPatch
 import dev.jason.gboardpatches.patches.gboard.features.writingtools.gboardAiWritingToolsFlagValuePatch
 import dev.jason.gboardpatches.patches.gboard.features.zhuyinbottomrow.gboardZhuyinBottomRowWeightSoftKeyPatch
@@ -51,7 +52,7 @@ class GboardPortProductCatalogContractTest {
     @Test
     fun catalogIsDeterministicAndDeclaresSelectedOnlyZeroSelectionComposition() {
         assertEquals("gboard-port-product-catalog.v1", catalog["format"].asString)
-        assertEquals("1.21.0", catalog["catalog_version"].asString)
+        assertEquals("1.23.0", catalog["catalog_version"].asString)
         val composition = catalog.getAsJsonObject("composition")
         assertEquals(
             setOf("selected_only_call_chain", "runtime_feature_mask"),
@@ -321,6 +322,7 @@ class GboardPortProductCatalogContractTest {
                 "english_qwerty_up_flick_uppercase.pointer" to lifecycle,
                 "long_press_editing_shortcuts.pointer" to
                     lifecycle,
+                "spacebar_language_switch.pointer" to lifecycle,
                 "swipeable_custom_top_row.pointer" to lifecycle,
                 "zhuyin_slide_input.pointer" to lifecycle,
             ),
@@ -340,6 +342,9 @@ class GboardPortProductCatalogContractTest {
                     "LONG_PRESS_QUICK_ACTIONS_RUNTIME_MAYBE_ENSURE_LONG_PRESS_SCHEDULED",
                     "LONG_PRESS_QUICK_ACTIONS_RUNTIME_ON_GLOBE_POINTER_FINISH",
                     "LONG_PRESS_QUICK_ACTIONS_RUNTIME_ON_GLOBE_POINTER_CANCEL",
+                ),
+                "spacebar_language_switch.pointer" to listOf(
+                    "SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_PROMOTE_POINTER_SWIPE",
                 ),
                 "swipeable_custom_top_row.pointer" to listOf(
                     "TOP_ROW_SWIPE_RUNTIME_MAYBE_ARM_AND_RESOLVE_TOP_ROW_OWNER",
@@ -419,9 +424,9 @@ class GboardPortProductCatalogContractTest {
         val byFeatureId = features().associateBy { feature -> feature["feature_id"].asString }
         val registrations = GboardPublishedPatchCatalog.morpheRegistrations
 
-        assertEquals(8, SOFT_KEY_FEATURE_CONTRACTS.size)
+        assertEquals(9, SOFT_KEY_FEATURE_CONTRACTS.size)
         assertEquals(
-            11,
+            12,
             features().sumOf { feature ->
                 feature.getAsJsonArray("contributions").count { contribution ->
                     contribution.asJsonObject["anchor_family_id"].asString == "soft_key_bind"
@@ -705,6 +710,7 @@ class GboardPortProductCatalogContractTest {
             "quick_insert" to "version-sensitive",
             "rounded_keyboard_panel" to "version-sensitive",
             "settings_homepage_override" to "version-sensitive",
+            "spacebar_language_switch" to "version-sensitive",
             "shift_backspace_forward_delete" to "version-sensitive",
             "simple_calculator" to "version-sensitive",
             "swipe_down_to_dismiss_keyboard" to "version-sensitive",
@@ -892,6 +898,13 @@ class GboardPortProductCatalogContractTest {
                 "gboardLongPressQuickActionsSoftKeyPatch",
                 FEATURE_ROOT +
                     "longpressquickactions/GboardLongPressQuickActionsSoftKeyPatch.kt",
+            ),
+            SoftKeyFeatureContract(
+                "spacebar_language_switch",
+                GboardSoftKeyFamilyFeature.SPACEBAR_LANGUAGE_SWITCH,
+                gboardSpacebarLanguageSwitchSoftKeyPatch,
+                "gboardSpacebarLanguageSwitchSoftKeyPatch",
+                FEATURE_ROOT + "spacebarlanguageswitch/GboardSpacebarLanguageSwitchSoftKeyPatch.kt",
             ),
             SoftKeyFeatureContract(
                 "swipeable_custom_top_row",
