@@ -591,6 +591,7 @@ val gboardSpacebarLanguageCyclePatch = gboardPublicResourcePatch(
     dependsOn(
         gboardPatchesSettingsPatch,
         gboardPatchesExtensionCarrierPatch,
+        gboardSpacebarLanguageCycleBytecodePatch,
     )
 }
 
