@@ -42,7 +42,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Collections.synchronizedMap(new WeakHashMap<ClassLoader, Long>());
     private static final Map<ClassLoader, Long> PENDING_CURSOR_LONG_PRESSES =
             Collections.synchronizedMap(new WeakHashMap<ClassLoader, Long>());
-    private static final long CURSOR_LONG_PRESS_WINDOW_MS = 10_000L;
+    private static final long CURSOR_LONG_PRESS_WINDOW_MS = 2_000L;
     private static volatile WeakReference<InputMethodService> INPUT_METHOD_SERVICE =
             new WeakReference<>(null);
 
@@ -311,7 +311,17 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             long cursorHoldThreshold = Math.max(
                     250L, (long) ViewConfiguration.getLongPressTimeout() - 75L);
             boolean dispatchedLongPress = hasPendingSpacebarCursorLongPress(classLoader);
-            if (dispatchedLongPress || heldDuration >= cursorHoldThreshold) {
+            if (dispatchedLongPress && heldDuration < cursorHoldThreshold) {
+                // A LONG_PRESS marker can outlive the pointer that generated it if
+                // the user releases without dragging. Do not let the next language
+                // swipe inherit cursor mode.
+                consumePendingSpacebarCursorLongPress(classLoader);
+                dispatchedLongPress = false;
+                Log.i(TAG, "Discarded stale cursor LONG_PRESS marker on a short swipe"
+                        + " (held=" + heldDuration + "ms)");
+            }
+            if (shouldStartCursorDrag(
+                    dispatchedLongPress, heldDuration, cursorHoldThreshold)) {
                 if (absX <= absY * 1.2f) {
                     return false;
                 }
@@ -564,6 +574,11 @@ public final class GboardSpacebarLanguageSwitchRuntime {
 
     static boolean shouldCaptureCursorLongPress(String actionName, boolean isSpacebar) {
         return isSpacebar && "LONG_PRESS".equals(actionName);
+    }
+
+    static boolean shouldStartCursorDrag(boolean dispatchedLongPress,
+            long heldDuration, long cursorHoldThreshold) {
+        return dispatchedLongPress && heldDuration >= cursorHoldThreshold;
     }
 
     private static void markPendingSpacebarCursorRelease(ClassLoader classLoader) {
