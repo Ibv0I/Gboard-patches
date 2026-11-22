@@ -473,6 +473,28 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         return SystemClock.uptimeMillis() <= deadline.longValue();
     }
 
+    /** Consumes the normal PRESS event generated when a held spacebar cursor drag ends. */
+    public static boolean maybeConsumeSpacebarCursorReleaseEvent(String actionTypeName,
+            Object metadata, ClassLoader classLoader) {
+        if (!"PRESS".equals(actionTypeName) || metadata == null || classLoader == null) {
+            return false;
+        }
+        try {
+            ReflectionHandles handles = reflectionHandles(classLoader);
+            return handles.isSpacebar(metadata) && consumePendingSpacebarCursorRelease(classLoader);
+        } catch (Throwable error) {
+            Log.w(TAG, "Could not inspect the spacebar cursor-drag release event", error);
+            return false;
+        }
+    }
+
+    private static boolean consumePendingSpacebarCursorRelease(ClassLoader classLoader) {
+        if (classLoader == null) {
+            return false;
+        }
+        return consumePendingSpacebarCursorRelease(classLoader);
+    }
+
     static boolean isSpacebarLanguagePickerEvent(int eventCode, Object payload) {
         return eventCode == SPACEBAR_IME_PICKER_ACTION_CODE && "space".equals(payload);
     }
