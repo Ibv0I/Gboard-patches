@@ -9,6 +9,8 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.inputmethod.ExtractedText;
+import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 
 import java.lang.ref.WeakReference;
@@ -47,6 +49,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         boolean nativeCursorDrag;
         float lastCursorX = Float.NaN;
         float cursorRemainderPx;
+        boolean cursorMoveLogged;
 
         SpacebarSwipeState(long downTime) {
             this.downTime = downTime;
@@ -60,6 +63,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     public static void noteInputMethodService(InputMethodService service) {
         if (service != null) {
             INPUT_METHOD_SERVICE = new WeakReference<>(service);
+            Log.i(TAG, "Captured active InputMethodService: "
+                    + service.getClass().getName());
         }
     }
 
@@ -409,16 +414,53 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                     state.cursorRemainderPx);
         }
 
+        // Prefer the editor selection API. InputConnection.sendKeyEvent(DPAD_*)
+        // is ignored by several software editors, so it cannot be the primary path.
+        try {
+            ExtractedTextRequest request = new ExtractedTextRequest();
+            request.hintMaxChars = 10000;
+            request.hintMaxLines = 100;
+            ExtractedText extracted = connection.getExtractedText(request, 0);
+            if (extracted != null && extracted.text != null
+                    && extracted.selectionStart >= 0 && extracted.selectionEnd >= 0) {
+                int selectionStart = extracted.startOffset + extracted.selectionStart;
+                int selectionEnd = extracted.startOffset + extracted.selectionEnd;
+                int minimum = 0;
+                int maximum = extracted.partialStartOffset == -1
+                        ? extracted.startOffset + extracted.text.length()
+                        : Integer.MAX_VALUE;
+                int target = targetCursorPosition(
+                        selectionStart, selectionEnd, steps, minimum, maximum);
+                boolean moved = connection.setSelection(target, target);
+                if (moved) {
+                    if (!state.cursorMoveLogged) {
+                        state.cursorMoveLogged = true;
+                        Log.i(TAG, "Spacebar cursor moved with setSelection: "
+                                + selectionStart + "/" + selectionEnd + " -> " + target);
+                    }
+                    return true;
+                }
+                Log.w(TAG, "InputConnection.setSelection returned false; trying DPAD fallback");
+            } else {
+                Log.w(TAG, "Editor did not provide valid ExtractedText; trying DPAD fallback");
+            }
+        } catch (Throwable error) {
+            Log.w(TAG, "ExtractedText/setSelection cursor path failed; trying DPAD fallback",
+                    error);
+        }
+
         int keyCode = steps > 0 ? KeyEvent.KEYCODE_DPAD_RIGHT : KeyEvent.KEYCODE_DPAD_LEFT;
         int count = Math.abs(steps);
+        boolean sent = false;
         try {
             connection.beginBatchEdit();
             for (int i = 0; i < count; i++) {
                 long downTime = SystemClock.uptimeMillis();
-                connection.sendKeyEvent(new KeyEvent(downTime, downTime,
+                boolean down = connection.sendKeyEvent(new KeyEvent(downTime, downTime,
                         KeyEvent.ACTION_DOWN, keyCode, 0));
-                connection.sendKeyEvent(new KeyEvent(downTime, SystemClock.uptimeMillis(),
-                        KeyEvent.ACTION_UP, keyCode, 0));
+                boolean up = connection.sendKeyEvent(new KeyEvent(downTime,
+                        SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, keyCode, 0));
+                sent |= down || up;
             }
         } catch (Throwable error) {
             Log.w(TAG, "Failed to move the editor cursor from a spacebar drag", error);
@@ -429,7 +471,23 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 // Batch-edit cleanup must not interrupt Gboard's pointer dispatch.
             }
         }
-        return true;
+        if (sent && !state.cursorMoveLogged) {
+            state.cursorMoveLogged = true;
+            Log.i(TAG, "Spacebar cursor moved with DPAD InputConnection fallback");
+        }
+        if (!sent) {
+            Log.w(TAG, "Editor rejected both setSelection and DPAD cursor movement");
+        }
+        return sent;
+    }
+
+    static int targetCursorPosition(int selectionStart, int selectionEnd,
+            int steps, int minimum, int maximum) {
+        int anchor = steps < 0
+                ? Math.min(selectionStart, selectionEnd)
+                : Math.max(selectionStart, selectionEnd);
+        long requested = (long) anchor + steps;
+        return (int) Math.max(minimum, Math.min((long) maximum, requested));
     }
 
     private static InputMethodService resolveInputMethodService(View view) {
