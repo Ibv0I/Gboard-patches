@@ -55,8 +55,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             handles.putActionMethod.invoke(builder, slideRight);
             Object patched = handles.buildKeyMetadataMethod.invoke(builder);
             return patched != null ? patched : keyMetadata;
-        } catch (Throwable ignored) {
+        } catch (Throwable error) {
             // Keep the stock key metadata if the target Gboard ABI changes.
+            Log.e(TAG, "Failed to add horizontal slide actions to the spacebar", error);
             return keyMetadata;
         }
     }
@@ -67,14 +68,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
      */
     public static boolean maybeConsumeGesture(Object gestureDispatcher, Object action,
             Object keyMetadata) {
-        if (!(action instanceof Enum<?> actionEnum)) {
-            return false;
-        }
-        String actionName = actionEnum.name();
-        if (!"SLIDE_LEFT".equals(actionName) && !"SLIDE_RIGHT".equals(actionName)) {
-            return false;
-        }
-        if (keyMetadata == null) {
+        if (action == null || keyMetadata == null) {
             return false;
         }
 
@@ -82,8 +76,19 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 ? gestureDispatcher.getClass().getClassLoader()
                 : keyMetadata.getClass().getClassLoader();
         final ReflectionHandles handles;
+        final boolean next;
+        final String actionName;
         try {
             handles = reflectionHandles(classLoader);
+            if (action.equals(handles.slideLeftActionType)) {
+                next = false;
+                actionName = "SLIDE_LEFT";
+            } else if (action.equals(handles.slideRightActionType)) {
+                next = true;
+                actionName = "SLIDE_RIGHT";
+            } else {
+                return false;
+            }
             if (!handles.isSpacebar(keyMetadata)
                     || !handles.hasAction(keyMetadata, handles.slideLeftActionType)
                     || !handles.hasAction(keyMetadata, handles.slideRightActionType)) {
@@ -101,7 +106,6 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 return false;
             }
 
-            boolean next = "SLIDE_RIGHT".equals(actionName);
             boolean switched = switchEnabledLanguage(context, classLoader, next);
             if (!switched) {
                 Log.w(TAG, "Gboard did not switch language for " + actionName);
@@ -129,9 +133,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         Class<?> managerClass = Class.forName("pga", false, classLoader);
         Class<?> entryClass = Class.forName("pev", false, classLoader);
         Class<?> sourceClass = Class.forName("pfi", false, classLoader);
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        Object source = Enum.valueOf((Class<? extends Enum>) sourceClass.asSubclass(Enum.class),
-                "GLOBE_KEY");
+        // The stock Gboard language-switch callback calls pga.t(z, pfi.d).
+        // The obfuscated enum constant is named "d" in this Gboard build.
+        Object source = enumConstant(sourceClass, "d");
 
         Method managerFactory = managerClass.getDeclaredMethod("F", Context.class);
         managerFactory.setAccessible(true);
@@ -357,9 +361,11 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             buildKeyMetadataMethod = keyMetadataBuilderClass.getDeclaredMethod("b");
             putActionMethod = keyMetadataBuilderClass.getDeclaredMethod("t", actionDefClass);
 
-            pressActionType = enumValue(actionTypeClass, "PRESS");
-            slideLeftActionType = enumValue(actionTypeClass, "SLIDE_LEFT");
-            slideRightActionType = enumValue(actionTypeClass, "SLIDE_RIGHT");
+            // Gboard 18.5.4 obfuscates qae. TouchActionBundle uses qae.a
+            // for press, while qin.t maps left/right swipes to qae.e/qae.f.
+            pressActionType = enumConstant(actionTypeClass, "a");
+            slideLeftActionType = enumConstant(actionTypeClass, "e");
+            slideRightActionType = enumConstant(actionTypeClass, "f");
             commitIntention = enumValue(intentionClass, "COMMIT");
 
             pressActionMethod.setAccessible(true);
@@ -397,6 +403,18 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             setSingleActionMethod.invoke(builder, PLAIN_TEXT_KEYCODE, commitIntention, "");
             return buildActionMethod.invoke(builder);
         }
+    }
+
+    private static Object enumConstant(Class<?> enumClass, String fieldName)
+            throws ReflectiveOperationException {
+        Field field = enumClass.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        Object value = field.get(null);
+        if (value == null || !enumClass.isInstance(value)) {
+            throw new IllegalStateException(
+                    "Field " + enumClass.getName() + "." + fieldName + " is not an enum constant");
+        }
+        return value;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
