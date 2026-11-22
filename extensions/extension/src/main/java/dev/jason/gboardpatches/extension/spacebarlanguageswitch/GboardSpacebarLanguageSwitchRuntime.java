@@ -40,6 +40,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Collections.synchronizedMap(new WeakHashMap<Object, SpacebarSwipeState>());
     private static final Map<ClassLoader, Long> PENDING_CURSOR_RELEASES =
             Collections.synchronizedMap(new WeakHashMap<ClassLoader, Long>());
+    private static final Map<ClassLoader, Long> PENDING_CURSOR_LONG_PRESSES =
+            Collections.synchronizedMap(new WeakHashMap<ClassLoader, Long>());
+    private static final long CURSOR_LONG_PRESS_WINDOW_MS = 10_000L;
     private static volatile WeakReference<InputMethodService> INPUT_METHOD_SERVICE =
             new WeakReference<>(null);
 
@@ -141,6 +144,21 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 Log.i(TAG, "Consumed the spacebar press ending a cursor drag");
                 return true;
             }
+
+            String dispatchedActionName = action instanceof Enum<?> enumAction
+                    ? enumAction.name() : String.valueOf(action);
+            if (shouldCaptureCursorLongPress(dispatchedActionName,
+                    handles.isSpacebar(keyMetadata))) {
+                Context context = extractGestureDispatcherContext(
+                        gestureDispatcher, classLoader);
+                if (context != null && GboardSpacebarLanguageSwitchSettings.readEnabled(context)) {
+                    markPendingSpacebarCursorLongPress(classLoader);
+                    Log.i(TAG, "Consumed spacebar LONG_PRESS before Gboard handling; "
+                            + "waiting for horizontal cursor drag");
+                    return true;
+                }
+            }
+
             if (action.equals(handles.slideLeftActionType)) {
                 next = false;
                 actionName = "SLIDE_LEFT";
@@ -292,7 +310,11 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                     motionEvent.getEventTime() - motionEvent.getDownTime());
             long cursorHoldThreshold = Math.max(
                     250L, (long) ViewConfiguration.getLongPressTimeout() - 75L);
-            if (heldDuration >= cursorHoldThreshold) {
+            boolean dispatchedLongPress = hasPendingSpacebarCursorLongPress(classLoader);
+            if (dispatchedLongPress || heldDuration >= cursorHoldThreshold) {
+                if (absX <= absY * 1.2f) {
+                    return false;
+                }
                 // A long hold followed by movement is cursor control, not a
                 // language swipe. Use the active InputConnection for DPAD movement
                 // and consume qin.t() so it cannot retarget the held space key.
@@ -304,9 +326,11 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 synchronized (SPACEBAR_SWIPE_STATES) {
                     state.nativeCursorDrag = true;
                 }
+                consumePendingSpacebarCursorLongPress(classLoader);
                 markPendingSpacebarCursorRelease(classLoader);
                 Log.i(TAG, "Started spacebar cursor drag"
-                        + " (held=" + heldDuration + "ms, dx=" + Math.round(deltaX) + ")");
+                        + " (longPressAction=" + dispatchedLongPress
+                        + ", held=" + heldDuration + "ms, dx=" + Math.round(deltaX) + ")");
                 return true;
             }
 
@@ -508,6 +532,38 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         }
         WeakReference<InputMethodService> reference = INPUT_METHOD_SERVICE;
         return reference == null ? null : reference.get();
+    }
+
+    private static void markPendingSpacebarCursorLongPress(ClassLoader classLoader) {
+        if (classLoader != null) {
+            PENDING_CURSOR_LONG_PRESSES.put(classLoader,
+                    SystemClock.uptimeMillis() + CURSOR_LONG_PRESS_WINDOW_MS);
+        }
+    }
+
+    private static boolean hasPendingSpacebarCursorLongPress(ClassLoader classLoader) {
+        if (classLoader == null) {
+            return false;
+        }
+        Long deadline = PENDING_CURSOR_LONG_PRESSES.get(classLoader);
+        if (deadline == null) {
+            return false;
+        }
+        if (SystemClock.uptimeMillis() > deadline.longValue()) {
+            PENDING_CURSOR_LONG_PRESSES.remove(classLoader);
+            return false;
+        }
+        return true;
+    }
+
+    private static void consumePendingSpacebarCursorLongPress(ClassLoader classLoader) {
+        if (classLoader != null) {
+            PENDING_CURSOR_LONG_PRESSES.remove(classLoader);
+        }
+    }
+
+    static boolean shouldCaptureCursorLongPress(String actionName, boolean isSpacebar) {
+        return isSpacebar && "LONG_PRESS".equals(actionName);
     }
 
     private static void markPendingSpacebarCursorRelease(ClassLoader classLoader) {
