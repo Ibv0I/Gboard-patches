@@ -18,6 +18,16 @@ public final class GboardCursorTrackpadPolicyTest {
     }
 
     @Test
+    public void missingPreferencesUseTheEnabledDefaultForNativeFlags() {
+        Assert.assertEquals(Boolean.TRUE, GboardCursorTrackpadRuntime.applyOverriddenFlagValue(
+                "free_cursor", Boolean.FALSE, null));
+        Assert.assertEquals(Boolean.TRUE, GboardCursorTrackpadRuntime.applyOverriddenFlagValue(
+                "free_cursor_lock_mode", Boolean.FALSE, null));
+        Assert.assertSame(Boolean.FALSE, GboardCursorTrackpadRuntime.applyOverriddenFlagValue(
+                "unrelated", Boolean.FALSE, null));
+    }
+
+    @Test
     public void disabledOrUnrelatedPreservesStock() {
         Assert.assertSame(Boolean.FALSE, GboardCursorTrackpadPolicy.maybeForceFlag(
                 "free_cursor", Boolean.FALSE, false));
