@@ -105,6 +105,29 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 next = true;
                 actionName = "SLIDE_RIGHT";
             } else {
+                // The dispatcher can receive ordinary space presses as well. Log only
+                // when the metadata belongs to the spacebar so we can distinguish
+                // "gesture hook not reached" from "Gboard dispatched another action".
+                if ("com.google.android.libraries.inputmethod.metadata.SoftKeyDef"
+                        .equals(keyMetadata.getClass().getName())) {
+                    try {
+                        if (handles.isSpacebar(keyMetadata)) {
+                            String dispatchedAction = action instanceof Enum<?> enumAction
+                                    ? enumAction.name() : String.valueOf(action);
+                            Log.i(TAG, "Spacebar dispatcher received non-horizontal action="
+                                    + dispatchedAction
+                                    + ", expected=" + handles.slideLeftActionType
+                                    + "/" + handles.slideRightActionType
+                                    + ", metadataHasLeft="
+                                    + handles.hasAction(keyMetadata, handles.slideLeftActionType)
+                                    + ", metadataHasRight="
+                                    + handles.hasAction(keyMetadata, handles.slideRightActionType));
+                        }
+                    } catch (Throwable diagnosticError) {
+                        Log.w(TAG, "Could not inspect non-horizontal spacebar dispatch",
+                                diagnosticError);
+                    }
+                }
                 return false;
             }
             Log.i(TAG, "Observed " + actionName + " gesture at Gboard dispatcher");
