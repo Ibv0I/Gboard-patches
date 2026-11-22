@@ -98,7 +98,7 @@ These identify the pointer lifecycle but are not themselves a completed patch.
 2. Build the Morphe patch bundle and inspect the emitted DEX to confirm that the new calls are present with valid register operands and preserved exception handlers.
 3. Install on the target Gboard build and test: tap, left/right swipe, vertical movement, long press, double tap, cursor/trackpad movement, cancel, additional pointers, and more than two configured languages.
 
-The code currently resolves method targets from generated bindings, extracts registers from the exact invoke instructions, and fails closed when expected call anchors are missing or duplicated. It does **not yet provide a full post-mutation control-flow fingerprint or copied-class transactional verifier**; that remains part of the pre-release verification work.
+The code resolves targets from generated bindings, extracts registers from exact invoke instructions, and fails closed when required call anchors are missing or duplicated. It copies both target classes, validates the stock shape, applies changes to the copies, validates the patched shape, and only then transfers the resulting methods back. A complete post-mutation control-flow fingerprint and an inspected build artifact are still outstanding.
 
 ## Gesture policy
 
@@ -241,7 +241,7 @@ A robust consume hook can therefore be inserted immediately before the `qin.u(..
 
 ### Implementation boundary
 
-The current patch is anchored to generated method bindings and resolves argument registers from the exact `qin.F`, `qin.t`, and `qin.u` invoke instructions rather than relying on hard-coded register numbers. It leaves the original `qil.t` try/catch and post-action control flow intact because it replaces the ActionDef argument instead of inserting a branch around the action call. The patch does not yet perform a full post-mutation control-flow fingerprint or copied-class transactional verification; those checks, plus a real build and device test, remain outstanding.
+The current patch is anchored to generated method bindings and resolves argument registers from the exact `qin.F`, `qin.t`, and `qin.u` invoke instructions rather than relying on hard-coded register numbers. It applies changes to copied `qil` and `qin` classes, validates the patched shape, and only then transfers their methods back. It leaves the original `qil.t` try/catch and post-action control flow intact because it replaces the ActionDef argument instead of inserting a branch around the action call. A complete post-mutation control-flow fingerprint, a real build, and device testing remain outstanding.
 
 
 
@@ -275,7 +275,7 @@ The APK was inspected as a DEX container rather than relying only on JADX's Java
 ### Verified DEX call sites
 
 - `qil.h` calls `qin.t(MotionEvent,int)` at code-unit offset `0x2b`.
-- The same method calls `qsl.c(float,float,boolean)` at `0x64`; this is the stock cursor-ownership predicate. The custom move observer must be inserted only after the associated result/branch has been evaluated, not immediately after the invocation.
+- The same method calls `qsl.c(float,float,boolean)` at `0x64`; this is part of the stock cursor-ownership decision. The current observer is attached immediately after `qin.t` and uses the side-effect-free `qsl.b()` eligibility predicate to conservatively cancel while cursor control is available. This may decline some otherwise valid swipes, but it avoids invoking the state-mutating `qsl.c(...)` hit-test a second time.
 - `qil.t` calls `qin.G(...)` before resolving the normal action. The normal action dispatch is the `invoke-virtual/range` to `qin.u(...)` at code-unit offset `0x73`. It uses 10 register words beginning at `v3` (including the receiver). The next instruction begins at `0x76`, where the stock completion path continues.
 - `qin.B` calls `qin.r(J,I)` at `0x0c` and `qin.ac()` at `0x0f` before storing the new key view. The view argument is still available as the incoming parameter when the original pointer owner is established.
 
@@ -283,4 +283,4 @@ The APK was inspected as a DEX container rather than relying only on JADX's Java
 
 The target APK confirms the descriptors, access flags, code-item register counts, try-block counts, and the key call-site offsets above. In particular, it confirms that the completion hook can be anchored immediately before the stock `qin.u` invocation and that the move observer has to account for the stock cursor predicate.
 
-This is not yet a safe executable transformation. Before emitting instructions, the patch must still resolve the exact field/method references and all branch targets around the cursor predicate and the `qin.u` call, including the `qil.t` try/catch region. The current project binding catalog does not yet declare the `qil.h` and `qil.t` targets. The next code change should add these exact bindings and fail-closed semantic shape checks, then test the candidate mutation against a copied class before enabling runtime calls.
+This inspection is the pre-implementation record. The current patch now resolves the exact method references from the generated binding profile, checks unique call anchors and argument-register shapes, mutates copied target classes, and verifies the expected injected-call layout before committing those changes to the live classes. It does not rewrite the existing `qil.t` branch graph or exception table. A full control-flow fingerprint and validation of the compiled DEX output remain to be done.

@@ -59,7 +59,7 @@ The implementation uses generated method bindings and checks that the expected i
 
 The move observer is placed immediately after `qin.t(MotionEvent,int)`. It uses the side-effect-free `qsl.b()` predicate as a conservative guard and cancels the custom gesture when the cursor controller is available. It does not duplicate the state-mutating `qsl.c(...)` hit-test.
 
-Remaining limitations: there is no full copied-class transactional preflight or post-mutation control-flow fingerprint yet. The patch module and extension tests have been added but have not been run here. The built patch bundle has not been inspected and the target APK has not been tested on-device.
+Remaining limitations: copied-class transactional preflight and stock/patched shape checks are implemented, but there is no full post-mutation control-flow fingerprint yet. The patch module and extension tests have been added but have not been run here. The built patch bundle has not been inspected and the target APK has not been tested on-device.
 
 ## Current status
 
