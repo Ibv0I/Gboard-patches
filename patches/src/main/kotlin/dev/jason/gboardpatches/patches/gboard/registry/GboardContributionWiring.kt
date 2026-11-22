@@ -27,6 +27,8 @@ import dev.jason.gboardpatches.patches.gboard.features.ocr.gboardOcrRuntimePatch
 import dev.jason.gboardpatches.patches.gboard.features.rambler.gboardRambler1803OfficialSelectorPatch
 import dev.jason.gboardpatches.patches.gboard.features.roundedkeyboard.gboardRoundedKeyboardBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlogo.gboardSpacebarLogoSoftKeyPatch
+import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchGesturePatch
+import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchSoftKeyPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeGesturePatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipePointerPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeSoftKeyPatch
@@ -115,6 +117,14 @@ internal object GboardContributionWiring {
                 "g_logo_on_spacebar.after_bind",
             ) {
                 arrayOf(gboardSpacebarLogoSoftKeyPatch)
+            },
+        ),
+        "spacebar_language_switch" to listOf(
+            unit("spacebar_language_switch.soft_key") {
+                arrayOf(gboardSpacebarLanguageSwitchSoftKeyPatch)
+            },
+            unit("spacebar_language_switch.gesture") {
+                arrayOf(gboardSpacebarLanguageSwitchGesturePatch)
             },
         ),
         "long_press_editing_shortcuts" to listOf(
