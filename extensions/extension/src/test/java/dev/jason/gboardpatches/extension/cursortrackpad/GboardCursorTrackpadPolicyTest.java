@@ -5,6 +5,11 @@ import org.junit.Test;
 
 public final class GboardCursorTrackpadPolicyTest {
     @Test
+    public void cursorTrackpadIsEnabledByDefault() {
+        Assert.assertTrue(GboardCursorTrackpadSettings.DEFAULT_ENABLED);
+    }
+
+    @Test
     public void enabledForcesBothFlags() {
         Assert.assertEquals(Boolean.TRUE, GboardCursorTrackpadPolicy.maybeForceFlag(
                 "free_cursor", Boolean.FALSE, true));

@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
 import dev.jason.gboardpatches.extension.core.input.GboardEditorActions;
+import dev.jason.gboardpatches.extension.spacebarlanguageswitch.GboardSpacebarLanguageSwitchRuntime;
 
 import java.lang.ref.WeakReference;
 import java.util.Collections;
@@ -121,6 +122,11 @@ public final class GboardLongPressQuickActionsRuntime {
             int keyId = handles.extractKeyId(metadata);
             String pressText = handles.extractPressText(metadata);
             int selectedCode = handles.extractSelectedEventCode(event);
+            if (GboardSpacebarLanguageSwitchRuntime.maybeConsumeSpacebarCursorReleaseEvent(
+                    actionTypeName, metadata, service.getClass().getClassLoader())) {
+                logInfo(ACTION_LOG_COUNT, 30, "consumed trailing spacebar cursor-drag press");
+                return true;
+            }
             boolean enabled = GboardLongPressQuickActionsRuntimeSettings.isEnabled();
             boolean quickActionEvent = GboardLongPressQuickActionsPolicy
                     .isQuickActionEvent(keyId, pressText, actionTypeName, selectedCode);

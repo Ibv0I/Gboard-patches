@@ -46,6 +46,13 @@ internal enum class GboardSoftKeyFamilyFeature(
             RuntimeCallId.TOP_ROW_SWIPE_RUNTIME_AFTER_SOFT_KEY_BOUND,
         ),
     ),
+    SPACEBAR_LANGUAGE_SWITCH(
+        beforeOrder = 250,
+        afterOrder = null,
+        beforeRuntimeCalls = listOf(
+            RuntimeCallId.SPACEBAR_LANGUAGE_SWITCH_RUNTIME_PATCH_INCOMING_SOFT_KEY_METADATA,
+        ),
+    ),
     LONG_PRESS_QUICK_ACTIONS(
         beforeOrder = 300,
         afterOrder = null,
@@ -337,6 +344,7 @@ internal fun MutableMethod.applySelectedSoftKeyFamily(
 internal fun GboardSoftKeyFamilyFeature.beforeDelegate(): String = when (this) {
     GboardSoftKeyFamilyFeature.ZHUYIN_TOGGLE,
     GboardSoftKeyFamilyFeature.TOP_ROW_SWIPE,
+    GboardSoftKeyFamilyFeature.SPACEBAR_LANGUAGE_SWITCH,
     GboardSoftKeyFamilyFeature.ZHUYIN_SLIDE,
     GboardSoftKeyFamilyFeature.CUSTOM_SYMBOLS,
     -> metadataTransformDelegate(beforeRuntimeCalls.single(), "p0, p1")
