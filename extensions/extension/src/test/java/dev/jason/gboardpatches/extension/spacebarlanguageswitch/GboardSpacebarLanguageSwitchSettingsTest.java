@@ -17,7 +17,7 @@ public final class GboardSpacebarLanguageSwitchSettingsTest {
 
         Assert.assertTrue(GboardSpacebarLanguageSwitchSettings.DEFAULT_ENABLED);
         Assert.assertTrue(GboardSpacebarLanguageSwitchSettings.readEnabled(preferences));
-        Assert.assertTrue(GboardSpacebarLanguageSwitchSettings.readEnabled(null));
+        Assert.assertTrue(GboardSpacebarLanguageSwitchSettings.readEnabled((SharedPreferences) null));
     }
 
     @Test
