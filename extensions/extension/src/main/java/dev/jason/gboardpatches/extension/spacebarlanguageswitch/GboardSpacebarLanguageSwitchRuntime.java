@@ -207,8 +207,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
 
             Object resolvedAction = handles.pointerResolveActionMethod.invoke(
                     tracker,
-                    motionEvent.getX(pointerIndex),
-                    motionEvent.getY(pointerIndex),
+                    (float) ((int) motionEvent.getX(pointerIndex)),
+                    (float) ((int) motionEvent.getY(pointerIndex)),
                     previousAction);
             if (!(resolvedAction instanceof Enum<?> resolvedEnum)) {
                 return false;
@@ -229,11 +229,16 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             // Reuse Gboard's normal active-action transition so the PRESS action is
             // replaced by the slide action before the pointer is released.
             Log.i(TAG, "Promoting in-spacebar horizontal movement to " + actionName);
+            Object dispatcher = handles.pointerDispatcherField.get(tracker);
+            boolean dispatcherState = Boolean.TRUE.equals(
+                    handles.pointerDispatcherStateMethod.invoke(dispatcher));
+
+            // Mirror qil.h(): n(actionDef, qio.s(), true, false, eventTime, deviceId).
             handles.pointerUpdateActionMethod.invoke(
                     tracker,
                     actionDef,
-                    false,
-                    false,
+                    dispatcherState,
+                    true,
                     false,
                     motionEvent.getEventTime(),
                     motionEvent.getDeviceId());
@@ -459,10 +464,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         private final Object commitIntention;
         private final Class<?> actionTypeClass;
         private final Field pointerCurrentViewField;
+        private final Field pointerDispatcherField;
         private final Method pointerCurrentActionMethod;
         private final Method pointerResolveActionMethod;
         private final Method pointerFindActionMethod;
         private final Method pointerUpdateActionMethod;
+        private final Method pointerDispatcherStateMethod;
 
         ReflectionHandles(ClassLoader classLoader) throws Throwable {
             Class<?> actionTypeClass = Class.forName("qae", false, classLoader);
@@ -477,9 +484,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             Class<?> keyMetadataBuilderClass = Class.forName("qcv", false, classLoader);
             Class<?> intentionClass = Class.forName("qbb", false, classLoader);
             Class<?> pointerTrackerClass = Class.forName("qin", false, classLoader);
+            Class<?> pointerDispatcherClass = Class.forName("qio", false, classLoader);
             this.actionTypeClass = actionTypeClass;
 
             pointerCurrentViewField = pointerTrackerClass.getDeclaredField("m");
+            pointerDispatcherField = pointerTrackerClass.getDeclaredField("r");
+            pointerDispatcherStateMethod = pointerDispatcherClass.getDeclaredMethod("s");
             pointerCurrentActionMethod = pointerTrackerClass.getDeclaredMethod("i");
             pointerResolveActionMethod = pointerTrackerClass.getDeclaredMethod(
                     "h", float.class, float.class, actionTypeClass);
@@ -526,6 +536,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             buildKeyMetadataMethod.setAccessible(true);
             putActionMethod.setAccessible(true);
             pointerCurrentViewField.setAccessible(true);
+            pointerDispatcherField.setAccessible(true);
+            pointerDispatcherStateMethod.setAccessible(true);
             pointerCurrentActionMethod.setAccessible(true);
             pointerResolveActionMethod.setAccessible(true);
             pointerFindActionMethod.setAccessible(true);
