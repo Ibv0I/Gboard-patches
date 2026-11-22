@@ -309,15 +309,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return false;
         }
 
-        if (next) {
-            // Use Gboard's own "switchToNextInputMethodEntry" implementation.
-            // Its boolean parameter controls the fallback behavior, not direction.
-            Method switchNextMethod = managerClass.getDeclaredMethod("t", boolean.class, sourceClass);
-            switchNextMethod.setAccessible(true);
-            Object result = switchNextMethod.invoke(manager, false, source);
-            return Boolean.TRUE.equals(result);
-        }
-
+        // Rotate only through Gboard's enabled language entries. Do not call
+        // pga.t(), because that advances the Android input-method list and can
+        // switch away from Gboard when another keyboard is installed.
         Field rotationField = findField(managerClass, "Y");
         Object rotation = rotationField.get(manager);
         if (rotation == null) {
@@ -342,7 +336,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return false;
         }
 
-        int targetRotationIndex = adjacentRotationIndex(currentIndex, order.length, false);
+        int targetRotationIndex = adjacentRotationIndex(currentIndex, order.length, next);
         if (targetRotationIndex < 0) {
             return false;
         }
@@ -356,6 +350,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         Method setCurrentEntryMethod = findCompatibleMethod(
                 managerClass, "l", currentEntry.getClass(), source.getClass());
         setCurrentEntryMethod.invoke(manager, targetEntry, source);
+        Log.i(TAG, "Rotated Gboard language " + (next ? "forward" : "backward")
+                + ": index " + currentIndex + " -> " + targetRotationIndex
+                + ", enabledLanguages=" + order.length);
         return true;
     }
 
