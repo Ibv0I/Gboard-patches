@@ -71,6 +71,8 @@ public final class GboardPatchesFeatureAvailability {
             "dev.jason.gboardpatches.feature.rounded_keyboard_panel";
     public static final String FEATURE_SPACEBAR_LOGO =
             "dev.jason.gboardpatches.feature.spacebar_logo";
+    public static final String FEATURE_SPACEBAR_LANGUAGE_SWITCH =
+            "dev.jason.gboardpatches.feature.spacebar_language_switch";
     public static final String FEATURE_CLOSE_PROACTIVE_SUGGESTIONS =
             "dev.jason.gboardpatches.feature.close_proactive_suggestions";
     public static final String FEATURE_QUICK_INSERT =
