@@ -67,7 +67,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 Log.e(TAG, "Gboard returned spacebar metadata without both slide actions");
                 return keyMetadata;
             }
-            Log.d(TAG, "Injected left/right slide actions into the spacebar");
+            Log.i(TAG, "Injected horizontal e/f slide actions into spacebar viewId="
+                    + Integer.toHexString(view.getId()) + ", keyCode=" + SPACE_KEYCODE);
             return patched;
         } catch (Throwable error) {
             // Keep the stock key metadata if the target Gboard ABI changes.
@@ -103,9 +104,13 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             } else {
                 return false;
             }
-            if (!handles.isSpacebar(keyMetadata)
-                    || !handles.hasAction(keyMetadata, handles.slideLeftActionType)
-                    || !handles.hasAction(keyMetadata, handles.slideRightActionType)) {
+            Log.i(TAG, "Observed " + actionName + " gesture at Gboard dispatcher");
+            boolean isSpacebar = handles.isSpacebar(keyMetadata);
+            boolean hasLeft = handles.hasAction(keyMetadata, handles.slideLeftActionType);
+            boolean hasRight = handles.hasAction(keyMetadata, handles.slideRightActionType);
+            if (!isSpacebar || !hasLeft || !hasRight) {
+                Log.w(TAG, "Gesture source check failed: spacebar=" + isSpacebar
+                        + ", leftAction=" + hasLeft + ", rightAction=" + hasRight);
                 return false;
             }
         } catch (Throwable error) {
@@ -351,7 +356,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         private final Object pressActionType;
         private final Object slideLeftActionType;
         private final Object slideRightActionType;
-        private final Class<?> intentionClass;
+        private final Object commitIntention;
 
         ReflectionHandles(ClassLoader classLoader) throws Throwable {
             Class<?> actionTypeClass = Class.forName("qae", false, classLoader);
@@ -381,13 +386,13 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             buildKeyMetadataMethod = keyMetadataBuilderClass.getDeclaredMethod("b");
             putActionMethod = keyMetadataBuilderClass.getDeclaredMethod("t", actionDefClass);
 
-            // Gboard 18.5.4 obfuscates qae. qin.h(float, float, qae)
-            // maps horizontal left/right swipes to qae.c/qae.d and vertical
-            // up/down swipes to qae.e/qae.f. qae.a remains the press action.
+            // Gboard 18.5.4 horizontal movement is qae.e (left) / qae.f (right).
+            // qin.t() independently confirms e/f for horizontal key-exit gestures;
+            // c/d are vertical up/down actions. qae.a is the normal press action.
             pressActionType = enumConstant(actionTypeClass, "a");
-            slideLeftActionType = enumConstant(actionTypeClass, "c");
-            slideRightActionType = enumConstant(actionTypeClass, "d");
-            this.intentionClass = intentionClass;
+            slideLeftActionType = enumConstant(actionTypeClass, "e");
+            slideRightActionType = enumConstant(actionTypeClass, "f");
+            commitIntention = enumConstant(intentionClass, "COMMIT");
 
             pressActionMethod.setAccessible(true);
             primaryActionDataMethod.setAccessible(true);
@@ -421,32 +426,11 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         Object buildEmptySlideAction(Object actionType, Object pressAction) throws Throwable {
             Object builder = actionBuilderConstructor.newInstance();
             actionTypeField.set(builder, actionType);
-            Object intention = fieldValueOfType(pressAction, intentionClass);
             setPopupLabelsMethod.invoke(builder, (Object) new String[] {""});
-            // Reuse the real spacebar PRESS intention rather than assuming a
-            // deobfuscated enum name for qbb in the current Gboard build.
-            setSingleActionMethod.invoke(builder, PLAIN_TEXT_KEYCODE, intention, "");
+            // Match GboardPatches' established custom-key action construction.
+            setSingleActionMethod.invoke(builder, PLAIN_TEXT_KEYCODE, commitIntention, "");
             return buildActionMethod.invoke(builder);
         }
-    }
-
-    private static Object fieldValueOfType(Object instance, Class<?> fieldType)
-            throws ReflectiveOperationException {
-        Class<?> current = instance.getClass();
-        while (current != null) {
-            for (Field field : current.getDeclaredFields()) {
-                if (field.getType() == fieldType) {
-                    field.setAccessible(true);
-                    Object value = field.get(instance);
-                    if (value != null) {
-                        return value;
-                    }
-                }
-            }
-            current = current.getSuperclass();
-        }
-        throw new NoSuchFieldException(
-                "No " + fieldType.getName() + " field on " + instance.getClass().getName());
     }
 
     private static Object enumConstant(Class<?> enumClass, String fieldName)
