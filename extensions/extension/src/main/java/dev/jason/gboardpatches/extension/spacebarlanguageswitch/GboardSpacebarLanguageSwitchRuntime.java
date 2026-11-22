@@ -244,7 +244,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             // Once the movement is clearly horizontal, keep the pointer assigned
             // to the spacebar even if it crosses its visual edge. This prevents
             // qin.t() from retargeting it to an adjacent key before the swipe ends.
-            if (absX < touchSlop || absX <= absY * 1.2f) {
+            if (Math.max(absX, absY) < touchSlop) {
                 return false;
             }
 
@@ -254,14 +254,19 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                     250L, (long) ViewConfiguration.getLongPressTimeout() - 75L);
             if (heldDuration >= cursorHoldThreshold) {
                 // Long hold belongs to Gboard's native cursor-control gesture.
-                // Keep the pointer captured on the spacebar, but never convert
-                // this drag into a language switch.
+                // Preserve movement in either axis and never turn this drag
+                // into a language switch.
                 synchronized (SPACEBAR_SWIPE_STATES) {
                     state.handled = true;
                 }
                 Log.i(TAG, "Preserving native spacebar cursor drag"
-                        + " (held=" + heldDuration + "ms, dx=" + Math.round(deltaX) + ")");
+                        + " (held=" + heldDuration + "ms, dx=" + Math.round(deltaX)
+                        + ", dy=" + Math.round(deltaY) + ")");
                 return true;
+            }
+
+            if (absX < touchSlop || absX <= absY * 1.2f) {
+                return false;
             }
 
             if (absX < switchThreshold) {
