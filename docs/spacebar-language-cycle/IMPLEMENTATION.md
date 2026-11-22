@@ -60,7 +60,7 @@ The `pev` entry exposes a language tag through `i()` and a layout-related identi
 
 - `pvd` is the existing action handler and is the authoritative behavior for action `-10011`.
 - `pvi.a()` also calls `pga.t(true, pfi.e)`, but is a shortcut registration path and uses a different `pfi` source.
-- For a patch inside the pointer handler, direct invocation of `pga.F(context).t(true, pfi.d)` is a candidate, but must be checked against the module action's metrics/side effects and lifecycle. Prefer reusing the existing action dispatch if it can be reached safely.
+- The current runtime invokes `pga.F(context).t(true, pfi.d)` directly. This is the same native Gboard language-entry rotation used by `pvd.m(ohe)` for action `-10011` (`SWITCH_TO_NEXT_LANGUAGE`). It does not call Android's `InputMethodManager.switchToNextInputMethod()`.
 
 ## Confirmed pointer / spacebar path
 
@@ -90,7 +90,7 @@ The current `gboard-version-bindings.json` contains these Gboard 18.5.4 bindings
 - `pointer_reset`: `Lqin;->C()V`
 - `pointer_pre_reset`: `Lqin;->ac()V`
 
-These identify the pointer lifecycle but are not themselves a completed patch.
+The reviewed profile also exports the exact dedicated touch-dispatch anchors used by this feature: `qil_pointer_down`, `qil_pointer_move`, `qil_action_up`, `qil_pointer_cancel`, `qil_pointer_reset`, `qil_pointer_close`, `qin_pointer_hit_test`, `qin_pointer_move`, `qin_pointer_dispatch_action`, and `qin_pointer_clear`. The feature's contribution requires these bindings as one admitted touch unit.
 
 ## Remaining verification
 
@@ -227,13 +227,13 @@ The actual 18.5.4 decompilation confirms the cursor decision point more precisel
 - Before resolving and dispatching the normal gesture action, `qil.h` evaluates `qin.m != previousSoftKeyView || qin.q == null || !qin.q.c(x, y, false)`.
 - Only when that condition is true does it call `qin.h(...)`, `qin.j(...)`, and `qin.n(...)`.
 
-Thus a safe observer should be placed after the condition's cursor-ownership test, not before `qin.t`, and should abandon the candidate gesture whenever the cursor owns the pointer. The check must use the same qsl.c(x, y, false) outcome, rather than simply testing qin.q for null.
+The current observer is inserted directly after `qin.t` and uses the side-effect-free `qsl.b()` eligibility predicate. If that predicate says the cursor controller is active, the runtime abandons the candidate. This is intentionally conservative: it can skip some otherwise valid swipes while cursor UI is available, but it does not call the state-mutating `qsl.c(...)` hit-test a second time.
 
 ### Pointer-up completion `qil.t(qin, MotionEvent, int)`
 
 The full method confirms that `qin.G(event, softKeyDef, pointerIndex, actionIndex)` executes before normal action dispatch. If it returns true, the normal action path is skipped. Otherwise, the method calculates the final gesture, resolves an ActionDef, and calls `qin.u(...)`. Subsequent long-press/double-tap cleanup and `qin.A(...)` run in the same completion routine.
 
-A robust consume hook can therefore be inserted immediately before the `qin.u(...)` invocation, with a conditional branch to the existing post-action cleanup block. The runtime must return false for non-spacebar sessions, taps, vertical gestures, and cursor-owned sessions. It should return true exactly once for an armed horizontal spacebar swipe, invoke Gboard's internal next-language action, and let the original cleanup continue.
+The current resolver is inserted immediately before `qin.u(...)`. For ordinary taps and every rejected gesture it returns the original ActionDef. For a successful swipe it returns null; the original `qin.u(...)` method immediately returns for a null ActionDef, and the existing bookkeeping, delayed-action handling, trace-finally path, and owner cleanup continue without a new branch or altered try/catch range.
 
 ### Original key identity
 
