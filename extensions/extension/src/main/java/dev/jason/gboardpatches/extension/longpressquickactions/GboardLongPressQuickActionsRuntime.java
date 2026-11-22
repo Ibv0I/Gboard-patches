@@ -123,6 +123,11 @@ public final class GboardLongPressQuickActionsRuntime {
             int keyId = handles.extractKeyId(metadata);
             String pressText = handles.extractPressText(metadata);
             int selectedCode = handles.extractSelectedEventCode(event);
+            if (GboardSpacebarLanguageSwitchRuntime.maybeConsumeSpacebarCursorReleaseEvent(
+                    actionTypeName, metadata, service.getClass().getClassLoader())) {
+                logInfo(ACTION_LOG_COUNT, 30, "consumed trailing spacebar cursor-drag press");
+                return true;
+            }
             boolean enabled = GboardLongPressQuickActionsRuntimeSettings.isEnabled();
             boolean quickActionEvent = GboardLongPressQuickActionsPolicy
                     .isQuickActionEvent(keyId, pressText, actionTypeName, selectedCode);
