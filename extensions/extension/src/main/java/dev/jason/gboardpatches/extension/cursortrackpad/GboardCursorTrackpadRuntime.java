@@ -26,7 +26,13 @@ public final class GboardCursorTrackpadRuntime {
     }
 
     static boolean applyPreference(boolean stock, SharedPreferences prefs) {
-        return prefs == null ? stock : stock || GboardCursorTrackpadSettings.readEnabled(prefs);
+        // Flag/resource getters can run before ActivityThread exposes the application
+        // context. A missing preference store must use the feature's declared default,
+        // otherwise free_cursor and enable_scrub_move remain false on a cold start.
+        boolean enabled = prefs == null
+                ? GboardCursorTrackpadSettings.DEFAULT_ENABLED
+                : GboardCursorTrackpadSettings.readEnabled(prefs);
+        return stock || enabled;
     }
 
     public static Object applyOverriddenFlagValue(String flagName, Object stockResult) {
@@ -37,9 +43,7 @@ public final class GboardCursorTrackpadRuntime {
                 return stockResult;
             }
             SharedPreferences preferences = GboardFlagRuntimeContext.preferencesOrNull();
-            return preferences == null
-                    ? stockResult
-                    : applyOverriddenFlagValue(flagName, stockResult, preferences);
+            return applyOverriddenFlagValue(flagName, stockResult, preferences);
         } catch (Throwable ignored) {
             return stockResult;
         }
@@ -49,10 +53,10 @@ public final class GboardCursorTrackpadRuntime {
             String flagName,
             Object stockResult,
             SharedPreferences preferences) {
-        return GboardCursorTrackpadPolicy.maybeForceFlag(
-                flagName,
-                stockResult,
-                GboardCursorTrackpadSettings.readEnabled(preferences));
+        boolean enabled = preferences == null
+                ? GboardCursorTrackpadSettings.DEFAULT_ENABLED
+                : GboardCursorTrackpadSettings.readEnabled(preferences);
+        return GboardCursorTrackpadPolicy.maybeForceFlag(flagName, stockResult, enabled);
     }
 
 }
