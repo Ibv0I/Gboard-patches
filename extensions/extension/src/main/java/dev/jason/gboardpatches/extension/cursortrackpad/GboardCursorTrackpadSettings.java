@@ -6,7 +6,9 @@ import dev.jason.gboardpatches.extension.flagsettings.GboardBooleanFlagSettings;
 
 public final class GboardCursorTrackpadSettings {
     public static final String PREF_KEY_ENABLED = "pref_force_cursor_trackpad_mode";
-    public static final boolean DEFAULT_ENABLED = false;
+    // The spacebar long-press gesture must enter Gboard's native cursor trackpad
+    // mode without requiring users to discover and enable a separate setting.
+    public static final boolean DEFAULT_ENABLED = true;
 
     private GboardCursorTrackpadSettings() {
     }
