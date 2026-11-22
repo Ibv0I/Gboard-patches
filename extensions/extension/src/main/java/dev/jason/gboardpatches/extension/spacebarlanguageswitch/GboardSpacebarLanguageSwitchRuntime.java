@@ -209,7 +209,6 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 return false;
             }
             Log.i(TAG, "Observed " + actionName + " gesture at Gboard dispatcher");
-            boolean isSpacebar = handles.isSpacebar(keyMetadata);
             boolean hasLeft = handles.hasAction(keyMetadata, handles.slideLeftActionType);
             boolean hasRight = handles.hasAction(keyMetadata, handles.slideRightActionType);
             if (!isSpacebar || !hasLeft || !hasRight) {
