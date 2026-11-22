@@ -29,7 +29,22 @@ private val gboardSpacebarLanguageSwitchPointerTransformation =
                 (moveMethod.implementation?.registerCount ?: 0) > 3
         ) { "Unexpected qin.t pointer-move method shape" }
 
+        val popupCandidates = context.ownerClass.methods.filter { method ->
+            method.name == "D" &&
+                method.parameterTypes == listOf("J") &&
+                method.returnType == "V"
+        }
+        check(popupCandidates.size == 1) {
+            "Could not uniquely resolve qin.D(J)V long-press popup method"
+        }
+        val popupMethod = popupCandidates.single()
+        check(
+            popupMethod.accessFlags == (AccessFlags.PUBLIC.value or AccessFlags.FINAL.value) &&
+                (popupMethod.implementation?.registerCount ?: 0) > 3
+        ) { "Unexpected qin.D long-press popup method shape" }
+
         moveMethod.applySpacebarSwipePromotionDelegate()
+        popupMethod.applySpacebarPopupSuppressionDelegate()
     }
 
 private val gboardSpacebarLanguageSwitchPointerSpec = GboardPointerOwnerFeatureSpec(
@@ -41,6 +56,24 @@ internal val gboardSpacebarLanguageSwitchPointerPatch = gboardPointerOwnerFeatur
     description = "Promote horizontal movement within the spacebar to Gboard slide actions.",
     spec = gboardSpacebarLanguageSwitchPointerSpec,
 )
+
+private fun MutableMethod.applySpacebarPopupSuppressionDelegate() {
+    val delegate = """
+        ${RuntimeCallEmitter.invoke(
+            RuntimeCallId.SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_SUPPRESS_LONG_PRESS_POPUP,
+            "p0",
+        )}
+
+        move-result v0
+
+        if-eqz v0, :jasondev_spacebar_popup_continue
+
+        return-void
+
+        :jasondev_spacebar_popup_continue
+    """.trimIndent()
+    addInstructions(0, delegate)
+}
 
 private fun MutableMethod.applySpacebarSwipePromotionDelegate() {
     val delegate = """
