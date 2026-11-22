@@ -6,7 +6,6 @@ import com.android.tools.smali.dexlib2.AccessFlags
 import dev.jason.gboardpatches.patches.gboard.shared.GboardPointerOwnerFeature
 import dev.jason.gboardpatches.patches.gboard.shared.GboardPointerOwnerFeatureSpec
 import dev.jason.gboardpatches.patches.gboard.shared.GboardPointerOwnerTransformationAdapter
-import dev.jason.gboardpatches.patches.gboard.shared.GboardPointerOwnerFeature
 import dev.jason.gboardpatches.patches.gboard.shared.gboardPointerOwnerFeaturePatch
 import dev.jason.gboardpatches.patches.gboard.shared.runtimeabi.RuntimeCallEmitter
 import dev.jason.gboardpatches.patches.gboard.shared.runtimeabi.RuntimeCallId
@@ -27,7 +26,7 @@ private val gboardSpacebarLanguageSwitchPointerTransformation =
         val moveMethod = candidates.single()
         check(
             moveMethod.accessFlags == (AccessFlags.PUBLIC.value or AccessFlags.FINAL.value) &&
-                moveMethod.implementation?.registerCount ?: 0 > 3
+                (moveMethod.implementation?.registerCount ?: 0) > 3
         ) { "Unexpected qin.t pointer-move method shape" }
 
         moveMethod.applySpacebarSwipePromotionDelegate()
