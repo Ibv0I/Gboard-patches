@@ -28,6 +28,7 @@ internal fun interface GboardPointerOwnerTransformation {
 internal enum class GboardPointerOwnerFeature {
     ENGLISH_QWERTY,
     LONG_PRESS_QUICK_ACTIONS,
+    SPACEBAR_LANGUAGE_SWITCH,
     TOP_ROW_SWIPE,
     ZHUYIN_SLIDE,
 }
@@ -40,6 +41,7 @@ internal data class GboardPointerOwnerFeatureSpec(
 internal val GBOARD_POINTER_OWNER_COMPOSITION_ORDER = listOf(
     GboardPointerOwnerFeature.ENGLISH_QWERTY,
     GboardPointerOwnerFeature.LONG_PRESS_QUICK_ACTIONS,
+    GboardPointerOwnerFeature.SPACEBAR_LANGUAGE_SWITCH,
     GboardPointerOwnerFeature.TOP_ROW_SWIPE,
     GboardPointerOwnerFeature.ZHUYIN_SLIDE,
 )
@@ -273,6 +275,10 @@ private fun MutableClass.validatePointerOwnerBindings(
             GboardVersionBindings.softKeyViewType.descriptor
     ) { "Pointer owner SoftKeyView binding relation drift" }
 
+    if (GboardPointerOwnerFeature.SPACEBAR_LANGUAGE_SWITCH in selected) {
+        ownerClass.resolveSpacebarPointerMoveMethod()
+    }
+
     val needsLifecycle = selected.isNotEmpty()
     if (!needsLifecycle) return
     resolveExactPointerMethod(
@@ -291,6 +297,40 @@ private fun MutableClass.validatePointerOwnerBindings(
         GboardVersionBindings.pointerReset,
         AccessFlags.PUBLIC.value or AccessFlags.FINAL.value,
     )
+}
+
+private fun MutableClass.resolveSpacebarPointerMoveMethod(): MutableMethod {
+    val expectedParameters = listOf("Landroid/view/MotionEvent;", "I")
+    val matches = methods.filter { method ->
+        method.name == "t" &&
+            method.parameterTypes == expectedParameters &&
+            method.returnType == "V"
+    }
+    check(matches.size == 1) {
+        "Could not uniquely resolve qin.t(Landroid/view/MotionEvent;I)V"
+    }
+    val target = matches.single()
+    check(
+        target.accessFlags == (AccessFlags.PUBLIC.value or AccessFlags.FINAL.value) &&
+            target.implementation != null &&
+            target.implementation!!.registerCount > 3
+    ) { "Unexpected qin.t pointer-move target shape" }
+    return target
+}
+
+private fun MutableMethod.requireSpacebarPointerMoveHook() {
+    val instructions = implementation?.instructions
+        ?: error("Spacebar pointer-move target has no implementation")
+    val invoke = instructions.firstOrNull()?.methodReference()
+    check(
+        instructions.size >= 4 &&
+            invoke == SPACEBAR_POINTER_MOVE_CALL &&
+            instructions[0].opcode == Opcode.INVOKE_STATIC &&
+            instructions[1].opcode == Opcode.MOVE_RESULT &&
+            instructions[2].opcode == Opcode.IF_EQZ &&
+            instructions[3].opcode == Opcode.RETURN_VOID &&
+            countCalls(SPACEBAR_POINTER_MOVE_CALL) == 1
+    ) { "Malformed spacebar pointer-move hook in $definingClass->$name" }
 }
 
 private fun MutableClass.resolveExactPointerMethod(
@@ -367,6 +407,13 @@ private val POINTER_RUNTIME_CALLS_BY_FEATURE = mapOf(
             RuntimeCallId.LONG_PRESS_QUICK_ACTIONS_RUNTIME_ON_GLOBE_POINTER_CANCEL,
             listOf("Ljava/lang/Object;"),
             "V",
+        ),
+    ),
+    GboardPointerOwnerFeature.SPACEBAR_LANGUAGE_SWITCH to listOf(
+        pointerRuntimeAbi(
+            RuntimeCallId.SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_PROMOTE_POINTER_SWIPE,
+            listOf("Ljava/lang/Object;", "Landroid/view/MotionEvent;", "I"),
+            "Z",
         ),
     ),
     GboardPointerOwnerFeature.TOP_ROW_SWIPE to listOf(
@@ -553,6 +600,13 @@ private fun GboardPointerOwnerTransformationContext.verifyCompleteTransformation
         }
     }
     verifyPointerOwnerCalls(selected)
+    if (GboardPointerOwnerFeature.SPACEBAR_LANGUAGE_SWITCH in selected) {
+        ownerClass.resolveSpacebarPointerMoveMethod().requireSpacebarPointerMoveHook()
+    } else {
+        check(ownerClass.methods.sumOf { method ->
+            method.countCalls(SPACEBAR_POINTER_MOVE_CALL)
+        } == 0) { "Unexpected spacebar pointer-move hook" }
+    }
     if (hasLongPress) verifyLongPressEntryCopies()
     verifyCleanupCalls(selected)
     pointerOwnerMethod.requireExactPatchedPointerOwnerFingerprint()
@@ -945,6 +999,8 @@ private val LONG_PRESS_CANCEL_CALL =
 private val LONG_PRESS_FINISH_CALL =
     RuntimeCallId.LONG_PRESS_QUICK_ACTIONS_RUNTIME_ON_GLOBE_POINTER_FINISH.methodCall()
 private val ZHUYIN_CLEAR_CALL = RuntimeCallId.ZHUYIN_SLIDE_RUNTIME_CLEAR_POINTER_STATE.methodCall()
+private val SPACEBAR_POINTER_MOVE_CALL =
+    RuntimeCallId.SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_PROMOTE_POINTER_SWIPE.methodCall()
 private val ALL_TRANSFORMATION_CALLS by lazy { listOf(
     ENGLISH_OWNER_CALL,
     LONG_PRESS_OWNER_CALL,
@@ -953,6 +1009,7 @@ private val ALL_TRANSFORMATION_CALLS by lazy { listOf(
     ENGLISH_CLEAR_CALL,
     TOP_ROW_CLEAR_CALL,
     TOP_ROW_FINISH_CALL,
+    SPACEBAR_POINTER_MOVE_CALL,
     LONG_PRESS_CANCEL_CALL,
     LONG_PRESS_FINISH_CALL,
     ZHUYIN_CLEAR_CALL,
