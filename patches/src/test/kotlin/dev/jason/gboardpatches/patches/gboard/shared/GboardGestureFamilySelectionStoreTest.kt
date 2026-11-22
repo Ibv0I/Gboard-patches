@@ -10,12 +10,14 @@ class GboardGestureFamilySelectionStoreTest {
         val store = GboardGestureFamilySelectionStore<Any>()
         val context = Any()
         store.add(context, GboardGestureFamilyFeature.TOP_ROW_SWIPE)
+        store.add(context, GboardGestureFamilyFeature.SPACEBAR_LANGUAGE_SWITCH)
         store.add(context, GboardGestureFamilyFeature.TOP_ROW_SWIPE)
         store.add(context, GboardGestureFamilyFeature.ZHUYIN_TOGGLE)
 
         assertEquals(
             listOf(
                 GboardGestureFamilyFeature.TOP_ROW_SWIPE,
+                GboardGestureFamilyFeature.SPACEBAR_LANGUAGE_SWITCH,
                 GboardGestureFamilyFeature.ZHUYIN_TOGGLE,
             ),
             store.take(context).toList(),

@@ -67,8 +67,7 @@ public final class GboardSpacebarLanguageSwitchSettingsFeature
             GboardSpacebarLanguageSwitchSettings.ensureDefault(preferences);
             boolean enabled = GboardSpacebarLanguageSwitchSettings.readEnabled(preferences);
             return buildScreenForState(enabled, value -> {
-                if (!GboardSpacebarLanguageSwitchSettings.writeEnabled(context, value)) {
-                }
+                GboardSpacebarLanguageSwitchSettings.writeEnabled(context, value);
                 GboardPatchesSettingsContract.refresh(host);
             });
         } catch (Throwable failure) {

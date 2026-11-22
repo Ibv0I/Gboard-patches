@@ -110,15 +110,6 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 next = true;
                 actionName = "SLIDE_RIGHT";
             } else {
-                if ("com.google.android.libraries.inputmethod.metadata.SoftKeyDef"
-                        .equals(keyMetadata.getClass().getName())) {
-                    try {
-                        if (handles.isSpacebar(keyMetadata)) {
-                            String dispatchedAction = action instanceof Enum<?> enumAction
-                                    ? enumAction.name() : String.valueOf(action);
-                        }
-                    }
-                }
                 return false;
             }
             boolean isSpacebar = handles.isSpacebar(keyMetadata);
