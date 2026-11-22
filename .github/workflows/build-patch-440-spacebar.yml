@@ -1,0 +1,36 @@
+name: Build Gboard patches 4.4.0
+on:
+  push:
+    branches:
+      - build-patch-440-spacebar
+permissions:
+  contents: read
+  packages: read
+jobs:
+  build:
+    name: Build .mpp file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Cache Gradle
+        uses: burrunan/gradle-cache-action@v3
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Build patch package
+        env:
+          GITHUB_ACTOR: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.MORPHE_PACKAGES_TOKEN }}
+        run: ./gradlew :patches:buildAndroid generatePatchesList
+      - name: Upload .mpp
+        uses: actions/upload-artifact@v4
+        with:
+          name: gboard-patches-4.4.0-spacebar-language-swipe
+          path: patches/build/libs/patches-4.4.0.mpp
+          if-no-files-found: error
+          retention-days: 7
