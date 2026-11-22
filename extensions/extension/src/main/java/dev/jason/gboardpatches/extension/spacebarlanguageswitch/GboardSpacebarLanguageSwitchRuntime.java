@@ -485,7 +485,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         if (classLoader == null) {
             return false;
         }
-        return consumePendingSpacebarCursorRelease(classLoader);
+        Long deadline = PENDING_CURSOR_RELEASES.get(classLoader);
+        if (deadline == null) {
+            return false;
+        }
+        PENDING_CURSOR_RELEASES.remove(classLoader);
+        return SystemClock.uptimeMillis() <= deadline.longValue();
     }
 
     static boolean isSpacebarLanguagePickerEvent(int eventCode, Object payload) {
