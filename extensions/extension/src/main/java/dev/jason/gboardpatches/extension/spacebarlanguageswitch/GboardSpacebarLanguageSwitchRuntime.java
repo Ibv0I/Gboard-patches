@@ -58,7 +58,14 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             handles.putActionMethod.invoke(builder, slideLeft);
             handles.putActionMethod.invoke(builder, slideRight);
             Object patched = handles.buildKeyMetadataMethod.invoke(builder);
-            return patched != null ? patched : keyMetadata;
+            if (patched == null
+                    || !handles.hasAction(patched, handles.slideLeftActionType)
+                    || !handles.hasAction(patched, handles.slideRightActionType)) {
+                Log.e(TAG, "Gboard returned spacebar metadata without both slide actions");
+                return keyMetadata;
+            }
+            Log.d(TAG, "Injected left/right slide actions into the spacebar");
+            return patched;
         } catch (Throwable error) {
             // Keep the stock key metadata if the target Gboard ABI changes.
             Log.e(TAG, "Failed to add horizontal slide actions to the spacebar", error);
@@ -444,8 +451,4 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         return value;
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Object enumValue(Class<?> enumClass, String name) {
-        return Enum.valueOf((Class<? extends Enum>) enumClass.asSubclass(Enum.class), name);
-    }
 }
