@@ -395,7 +395,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             pressActionType = enumConstant(actionTypeClass, "a");
             slideLeftActionType = enumConstant(actionTypeClass, "e");
             slideRightActionType = enumConstant(actionTypeClass, "f");
-            commitIntention = enumConstant(intentionClass, "COMMIT");
+            // Gboard obfuscates enum backing fields, so reflection by field name fails.
+            // Resolve the preserved enum constant name, matching the top-row swipe runtime.
+            commitIntention = Enum.valueOf(intentionClass.asSubclass(Enum.class), "COMMIT");
 
             pressActionMethod.setAccessible(true);
             primaryActionDataMethod.setAccessible(true);
