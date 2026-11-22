@@ -1,0 +1,56 @@
+name: Verify Gboard 4.4.0 spacebar language swipe
+on:
+  push:
+    branches:
+      - verify-release-440-working-spacebar-final
+permissions:
+  contents: read
+  packages: read
+jobs:
+  build:
+    name: Tests and 4.4.0 patch build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Cache Gradle
+        uses: burrunan/gradle-cache-action@v3
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: Run tests and build release artifact
+        id: gradle
+        shell: bash
+        env:
+          GITHUB_ACTOR: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ secrets.MORPHE_PACKAGES_TOKEN }}
+        run: |
+          set +e
+          set -o pipefail
+          ./gradlew :patches:test :extensions:extension:test :patches:buildAndroid generatePatchesList 2>&1 | tee gradle-verification.log
+          result=${PIPESTATUS[0]}
+          echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload Gradle diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gboard-440-spacebar-gradle-log-${{ github.sha }}
+          path: gradle-verification.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Fail if Gradle verification failed
+        if: steps.gradle.outputs.exit_code != '0'
+        run: exit 1
+      - name: Upload 4.4.0 package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gboard-patches-4.4.0-spacebar-language-swipe
+          path: patches/build/libs/patches-4.4.0.mpp
+          if-no-files-found: error
+          retention-days: 7
