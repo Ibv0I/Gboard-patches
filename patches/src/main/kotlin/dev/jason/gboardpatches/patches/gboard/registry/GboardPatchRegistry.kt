@@ -37,6 +37,7 @@ import dev.jason.gboardpatches.patches.gboard.features.closeproactivesuggestions
 import dev.jason.gboardpatches.patches.gboard.features.developeroptions.gboardDeveloperOptionsFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.cursortrackpad.gboardCursorTrackpadFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.cursortrackpad.gboardCursorTrackpadFlagValuePatch
+import dev.jason.gboardpatches.patches.gboard.features.cursortrackpad.gboardCursorTrackpadPreferencePatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeAssetsPatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.customtheme.gboardCustomThemeManifestPatch
@@ -370,6 +371,7 @@ val gboardCursorTrackpadPatch = gboardPublicResourcePatch(
         gboardPatchesSettingsPatch,
         gboardCursorTrackpadFeatureMarkerPatch,
         gboardCursorTrackpadFlagValuePatch,
+        gboardCursorTrackpadPreferencePatch,
     )
 }
 
