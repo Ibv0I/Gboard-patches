@@ -172,9 +172,9 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     }
 
     /**
-     * Gboard's stock qin.t() only promotes a slide after the pointer leaves the key bounds.
+     * Gboard's stock qin.t() retargets the pointer after it leaves the key bounds.
      * For the spacebar we use Gboard's own qin.h() direction resolver while the pointer is
-     * still over the key, then feed its SLIDE_LEFT/SLIDE_RIGHT ActionDef back through qin.n().
+     * still over the key, then let qil.h() finish the normal qin.j()/qin.n() dispatch.
      */
     public static boolean maybePromoteSpacebarHorizontalSwipe(Object tracker,
             MotionEvent motionEvent, int pointerIndex) {
@@ -217,6 +217,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
 
             String actionName = resolvedEnum.name();
             if (!"SLIDE_LEFT".equals(actionName) && !"SLIDE_RIGHT".equals(actionName)) {
+                Log.v(TAG, "Spacebar pointer resolver returned " + actionName
+                        + " (previous=" + previousAction + ")");
                 return false;
             }
 
