@@ -1,11 +1,14 @@
 package dev.jason.gboardpatches.extension.spacebarlanguageswitch;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.View;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -18,6 +21,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     private static final int SPACEBAR_VIEW_ID = 0x7f0b05b5;
     private static final int SPACE_KEYCODE = 62;
     private static final int PLAIN_TEXT_KEYCODE = -0x2719;
+    private static final String TAG = "GboardSpacebarLang";
 
     private static final Map<ClassLoader, ReflectionHandles> REFLECTION_BY_LOADER =
             Collections.synchronizedMap(new WeakHashMap<ClassLoader, ReflectionHandles>());
@@ -85,22 +89,30 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                     || !handles.hasAction(keyMetadata, handles.slideRightActionType)) {
                 return false;
             }
-        } catch (Throwable ignored) {
-            // Never swallow a gesture unless the source key was positively identified.
+        } catch (Throwable error) {
+            Log.e(TAG, "Cannot verify the source spacebar for a slide gesture", error);
             return false;
         }
 
         try {
             Context context = extractGestureDispatcherContext(gestureDispatcher, classLoader);
-            if (context != null) {
-                // Left = previous enabled language; right = next enabled language.
-                switchEnabledLanguage(context, classLoader, "SLIDE_RIGHT".equals(actionName));
+            if (context == null) {
+                Log.e(TAG, "Gesture dispatcher context was not available");
+                return false;
             }
-        } catch (Throwable ignored) {
-            // The action belongs to our spacebar, so consume its empty fallback
-            // even if a transient manager/reflection failure prevents switching.
+
+            boolean next = "SLIDE_RIGHT".equals(actionName);
+            boolean switched = switchEnabledLanguage(context, classLoader, next);
+            if (!switched) {
+                Log.w(TAG, "Gboard did not switch language for " + actionName);
+                return false;
+            }
+            Log.d(TAG, "Handled " + actionName + " on the spacebar");
+            return true;
+        } catch (Throwable error) {
+            Log.e(TAG, "Failed to switch language for " + actionName, error);
+            return false;
         }
-        return true;
     }
 
     static int adjacentRotationIndex(int currentIndex, int itemCount, boolean next) {
@@ -112,9 +124,10 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 : (currentIndex + itemCount - 1) % itemCount;
     }
 
-    private static void switchEnabledLanguage(Context context, ClassLoader classLoader,
+    private static boolean switchEnabledLanguage(Context context, ClassLoader classLoader,
             boolean next) throws Throwable {
         Class<?> managerClass = Class.forName("pga", false, classLoader);
+        Class<?> entryClass = Class.forName("pev", false, classLoader);
         Class<?> sourceClass = Class.forName("pfi", false, classLoader);
         @SuppressWarnings({"rawtypes", "unchecked"})
         Object source = Enum.valueOf((Class<? extends Enum>) sourceClass.asSubclass(Enum.class),
@@ -124,54 +137,151 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         managerFactory.setAccessible(true);
         Object manager = managerFactory.invoke(null, context);
         if (manager == null) {
-            return;
-        }
-
-        Field rotationField = managerClass.getDeclaredField("Y");
-        rotationField.setAccessible(true);
-        Object rotation = rotationField.get(manager);
-        if (rotation == null) {
-            return;
+            return false;
         }
 
         Method currentEntryMethod = managerClass.getDeclaredMethod("C");
         currentEntryMethod.setAccessible(true);
         Object currentEntry = currentEntryMethod.invoke(manager);
-        if (currentEntry == null) {
-            return;
+        if (currentEntry == null || !entryClass.isInstance(currentEntry)) {
+            return false;
+        }
+
+        if (next) {
+            // Use Gboard's own "switchToNextInputMethodEntry" implementation.
+            // Its boolean parameter controls the fallback behavior, not direction.
+            Method switchNextMethod = managerClass.getDeclaredMethod("t", boolean.class, sourceClass);
+            switchNextMethod.setAccessible(true);
+            Object result = switchNextMethod.invoke(manager, false, source);
+            return Boolean.TRUE.equals(result);
+        }
+
+        Field rotationField = findField(managerClass, "Y");
+        Object rotation = rotationField.get(manager);
+        if (rotation == null) {
+            return false;
         }
 
         Class<?> rotationClass = rotation.getClass();
-        Method currentIndexMethod = rotationClass.getDeclaredMethod("j", currentEntry.getClass());
-        currentIndexMethod.setAccessible(true);
-        int currentIndex = ((Number) currentIndexMethod.invoke(rotation, currentEntry)).intValue();
+        Method currentIndexMethod = findCompatibleMethod(
+                rotationClass, "j", currentEntry.getClass());
+        Object indexValue = currentIndexMethod.invoke(rotation, currentEntry);
+        if (!(indexValue instanceof Number)) {
+            return false;
+        }
+        int currentIndex = ((Number) indexValue).intValue();
 
-        Field entriesField = rotationClass.getDeclaredField("b");
-        Field orderField = rotationClass.getDeclaredField("c");
-        entriesField.setAccessible(true);
-        orderField.setAccessible(true);
+        Field entriesField = findField(rotationClass, "b");
+        Field orderField = findField(rotationClass, "c");
         Object entries = entriesField.get(rotation);
-        int[] order = (int[]) orderField.get(rotation);
+        Object rawOrder = orderField.get(rotation);
+        int[] order = readOrder(rawOrder);
         if (entries == null || order == null || order.length < 2) {
-            return;
+            return false;
         }
 
-        int targetRotationIndex = adjacentRotationIndex(currentIndex, order.length, next);
+        int targetRotationIndex = adjacentRotationIndex(currentIndex, order.length, false);
         if (targetRotationIndex < 0) {
-            return;
+            return false;
         }
         int targetEntryIndex = order[targetRotationIndex];
-        Method getEntryMethod = entries.getClass().getMethod("get", int.class);
-        getEntryMethod.setAccessible(true);
-        Object targetEntry = getEntryMethod.invoke(entries, targetEntryIndex);
-        if (targetEntry == null || targetEntry.equals(currentEntry)) {
-            return;
+        Object targetEntry = getIndexedValue(entries, targetEntryIndex);
+        if (targetEntry == null || !entryClass.isInstance(targetEntry)
+                || targetEntry.equals(currentEntry)) {
+            return false;
         }
 
-        Method setCurrentEntryMethod = managerClass.getDeclaredMethod(
-                "l", currentEntry.getClass(), sourceClass);
-        setCurrentEntryMethod.setAccessible(true);
+        Method setCurrentEntryMethod = findCompatibleMethod(
+                managerClass, "l", currentEntry.getClass(), source.getClass());
         setCurrentEntryMethod.invoke(manager, targetEntry, source);
+        return true;
+    }
+
+    private static Field findField(Class<?> type, String name) throws NoSuchFieldException {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                Field field = current.getDeclaredField(name);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException ignored) {
+                current = current.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(type.getName() + "." + name);
+    }
+
+    private static Method findCompatibleMethod(Class<?> type, String name,
+            Class<?>... argumentTypes) throws NoSuchMethodException {
+        Class<?> current = type;
+        while (current != null) {
+            for (Method method : current.getDeclaredMethods()) {
+                if (!name.equals(method.getName())) {
+                    continue;
+                }
+                Class<?>[] parameters = method.getParameterTypes();
+                if (parameters.length != argumentTypes.length) {
+                    continue;
+                }
+                boolean matches = true;
+                for (int i = 0; i < parameters.length; i++) {
+                    if (!parameters[i].isAssignableFrom(argumentTypes[i])) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches) {
+                    method.setAccessible(true);
+                    return method;
+                }
+            }
+            current = current.getSuperclass();
+        }
+        throw new NoSuchMethodException(type.getName() + "." + name);
+    }
+
+    private static int[] readOrder(Object value) {
+        if (value instanceof int[] order) {
+            return order;
+        }
+        if (value instanceof List<?> list) {
+            int[] order = new int[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                Object item = list.get(i);
+                if (!(item instanceof Number)) {
+                    return null;
+                }
+                order[i] = ((Number) item).intValue();
+            }
+            return order;
+        }
+        if (value != null && value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            int[] order = new int[length];
+            for (int i = 0; i < length; i++) {
+                Object item = Array.get(value, i);
+                if (!(item instanceof Number)) {
+                    return null;
+                }
+                order[i] = ((Number) item).intValue();
+            }
+            return order;
+        }
+        return null;
+    }
+
+    private static Object getIndexedValue(Object values, int index) throws Throwable {
+        if (index < 0) {
+            return null;
+        }
+        if (values instanceof List<?> list) {
+            return index < list.size() ? list.get(index) : null;
+        }
+        if (values.getClass().isArray()) {
+            return index < Array.getLength(values) ? Array.get(values, index) : null;
+        }
+        Method getMethod = findCompatibleMethod(values.getClass(), "get", int.class);
+        return getMethod.invoke(values, index);
     }
 
     private static Context extractGestureDispatcherContext(Object dispatcher,
@@ -180,8 +290,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return null;
         }
         Class<?> dispatcherClass = Class.forName("qil", false, classLoader);
-        Field contextField = dispatcherClass.getDeclaredField("b");
-        contextField.setAccessible(true);
+        Field contextField = findField(dispatcherClass, "b");
         Object context = contextField.get(dispatcher);
         return context instanceof Context ? (Context) context : null;
     }
