@@ -39,6 +39,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     private static final long CURSOR_TRACKPAD_HOLD_MS = 850L;
     private static final java.util.concurrent.atomic.AtomicInteger POINTER_DEBUG_LOG_COUNT =
             new java.util.concurrent.atomic.AtomicInteger();
+    private static final java.util.concurrent.atomic.AtomicInteger POINTER_ENTRY_DEBUG_LOG_COUNT =
+            new java.util.concurrent.atomic.AtomicInteger();
     private static final class SpacebarSwipeState {
         final long downTime;
         boolean handled;
@@ -151,7 +153,11 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 if (context != null && GboardSpacebarLanguageSwitchSettings.readEnabled(context)) {
                     markPendingSpacebarCursorLongPress(classLoader);
                     Log.i(TAG, "Observed spacebar LONG_PRESS; passing it to Gboard "
-                            + "to activate the native cursor trackpad");
+                            + "to activate the native cursor trackpad"
+                            + "; dispatcher=" + gestureDispatcher.getClass().getName()
+                            + "; dispatcherLoader=" + describeClassLoader(classLoader)
+                            + "; runtimeLoader=" + describeClassLoader(
+                                    GboardSpacebarLanguageSwitchRuntime.class.getClassLoader()));
                 }
             }
 
@@ -234,6 +240,20 @@ public final class GboardSpacebarLanguageSwitchRuntime {
      */
     public static boolean maybePromoteSpacebarHorizontalSwipe(Object tracker,
             MotionEvent motionEvent, int pointerIndex) {
+        if (tracker != null && motionEvent != null
+                && motionEvent.getActionMasked() == MotionEvent.ACTION_MOVE
+                && POINTER_ENTRY_DEBUG_LOG_COUNT.getAndIncrement() < 40) {
+            ClassLoader pointerLoader = tracker.getClass().getClassLoader();
+            Log.i(TAG, "Cursor pointer hook entry: tracker="
+                    + tracker.getClass().getName()
+                    + ", pointerLoader=" + describeClassLoader(pointerLoader)
+                    + ", runtimeLoader=" + describeClassLoader(
+                            GboardSpacebarLanguageSwitchRuntime.class.getClassLoader())
+                    + ", pointerIndex=" + pointerIndex
+                    + ", pointerCount=" + motionEvent.getPointerCount()
+                    + ", downTime=" + motionEvent.getDownTime()
+                    + ", eventTime=" + motionEvent.getEventTime());
+        }
         if (tracker == null || motionEvent == null
                 || motionEvent.getActionMasked() != MotionEvent.ACTION_MOVE
                 || pointerIndex < 0 || pointerIndex >= motionEvent.getPointerCount()) {
@@ -249,6 +269,14 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             ReflectionHandles handles = reflectionHandles(classLoader);
             Object currentView = handles.pointerCurrentViewField.get(tracker);
             boolean longPressPending = hasPendingSpacebarCursorLongPress(classLoader);
+            if (POINTER_ENTRY_DEBUG_LOG_COUNT.get() <= 40) {
+                Log.i(TAG, "Cursor pointer state: pendingLongPress=" + longPressPending
+                        + ", trackerLoader=" + describeClassLoader(classLoader)
+                        + ", stateLoader=" + describeClassLoader(cursorStateClassLoader())
+                        + ", currentViewId=" + (currentView instanceof View
+                                ? "0x" + Integer.toHexString(((View) currentView).getId())
+                                : "n/a"));
+            }
             if (!(currentView instanceof View spacebarView)
                     || spacebarView.getId() != SPACEBAR_VIEW_ID) {
                 if (longPressPending) {
@@ -430,31 +458,47 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         }
     }
 
+    private static ClassLoader cursorStateClassLoader() {
+        // Gesture dispatch and pointer tracking can be reached through different
+        // Gboard class-loader paths. Their shared cursor state belongs to this
+        // runtime class, not to the caller's Gboard ClassLoader argument.
+        return GboardSpacebarLanguageSwitchRuntime.class.getClassLoader();
+    }
+
+    private static String describeClassLoader(ClassLoader classLoader) {
+        return classLoader == null ? "null"
+                : classLoader.getClass().getName() + "@"
+                        + Integer.toHexString(System.identityHashCode(classLoader));
+    }
+
     private static void markPendingSpacebarCursorLongPress(ClassLoader classLoader) {
-        if (classLoader != null) {
-            PENDING_CURSOR_LONG_PRESSES.put(classLoader,
+        ClassLoader stateLoader = cursorStateClassLoader();
+        if (stateLoader != null) {
+            PENDING_CURSOR_LONG_PRESSES.put(stateLoader,
                     SystemClock.uptimeMillis() + CURSOR_LONG_PRESS_WINDOW_MS);
         }
     }
 
     private static boolean hasPendingSpacebarCursorLongPress(ClassLoader classLoader) {
-        if (classLoader == null) {
+        ClassLoader stateLoader = cursorStateClassLoader();
+        if (stateLoader == null) {
             return false;
         }
-        Long deadline = PENDING_CURSOR_LONG_PRESSES.get(classLoader);
+        Long deadline = PENDING_CURSOR_LONG_PRESSES.get(stateLoader);
         if (deadline == null) {
             return false;
         }
         if (SystemClock.uptimeMillis() > deadline.longValue()) {
-            PENDING_CURSOR_LONG_PRESSES.remove(classLoader);
+            PENDING_CURSOR_LONG_PRESSES.remove(stateLoader);
             return false;
         }
         return true;
     }
 
     private static void consumePendingSpacebarCursorLongPress(ClassLoader classLoader) {
-        if (classLoader != null) {
-            PENDING_CURSOR_LONG_PRESSES.remove(classLoader);
+        ClassLoader stateLoader = cursorStateClassLoader();
+        if (stateLoader != null) {
+            PENDING_CURSOR_LONG_PRESSES.remove(stateLoader);
         }
     }
 
@@ -473,23 +517,25 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     }
 
     private static boolean hasPendingSpacebarCursorRelease(ClassLoader classLoader) {
-        if (classLoader == null) {
+        ClassLoader stateLoader = cursorStateClassLoader();
+        if (stateLoader == null) {
             return false;
         }
-        Long deadline = PENDING_CURSOR_RELEASES.get(classLoader);
+        Long deadline = PENDING_CURSOR_RELEASES.get(stateLoader);
         if (deadline == null) {
             return false;
         }
         if (SystemClock.uptimeMillis() > deadline.longValue()) {
-            PENDING_CURSOR_RELEASES.remove(classLoader);
+            PENDING_CURSOR_RELEASES.remove(stateLoader);
             return false;
         }
         return true;
     }
 
     private static void markPendingSpacebarCursorRelease(ClassLoader classLoader) {
-        if (classLoader != null) {
-            PENDING_CURSOR_RELEASES.put(classLoader,
+        ClassLoader stateLoader = cursorStateClassLoader();
+        if (stateLoader != null) {
+            PENDING_CURSOR_RELEASES.put(stateLoader,
                     SystemClock.uptimeMillis() + 10_000L);
         }
     }
@@ -500,11 +546,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 || !action.equals(handles.pressActionType) || !handles.isSpacebar(metadata)) {
             return false;
         }
-        Long deadline = PENDING_CURSOR_RELEASES.get(classLoader);
+        ClassLoader stateLoader = cursorStateClassLoader();
+        Long deadline = stateLoader == null ? null : PENDING_CURSOR_RELEASES.get(stateLoader);
         if (deadline == null) {
             return false;
         }
-        PENDING_CURSOR_RELEASES.remove(classLoader);
+        PENDING_CURSOR_RELEASES.remove(stateLoader);
         return SystemClock.uptimeMillis() <= deadline.longValue();
     }
 
@@ -527,11 +574,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         if (classLoader == null) {
             return false;
         }
-        Long deadline = PENDING_CURSOR_RELEASES.get(classLoader);
+        ClassLoader stateLoader = cursorStateClassLoader();
+        Long deadline = stateLoader == null ? null : PENDING_CURSOR_RELEASES.get(stateLoader);
         if (deadline == null) {
             return false;
         }
-        PENDING_CURSOR_RELEASES.remove(classLoader);
+        PENDING_CURSOR_RELEASES.remove(stateLoader);
         return SystemClock.uptimeMillis() <= deadline.longValue();
     }
 
