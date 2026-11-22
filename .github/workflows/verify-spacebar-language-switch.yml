@@ -23,11 +23,31 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
       - name: Run unit tests, build Android patch, and generate patch list
+        id: gradle
+        shell: bash
         env:
           GITHUB_ACTOR: ${{ github.repository_owner }}
           GITHUB_TOKEN: ${{ secrets.MORPHE_PACKAGES_TOKEN }}
-        run: ./gradlew :patches:test :extensions:extension:test :patches:buildAndroid generatePatchesList
+        run: |
+          set +e
+          set -o pipefail
+          ./gradlew :patches:test :extensions:extension:test :patches:buildAndroid generatePatchesList 2>&1 | tee gradle-verification.log
+          result=${PIPESTATUS[0]}
+          echo "exit_code=$result" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload Gradle diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spacebar-language-switch-gradle-log-${{ github.sha }}
+          path: gradle-verification.log
+          if-no-files-found: error
+          retention-days: 7
+      - name: Fail if Gradle verification failed
+        if: steps.gradle.outputs.exit_code != '0'
+        run: exit 1
       - name: Upload verification artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: spacebar-language-switch-verification-${{ github.sha }}
