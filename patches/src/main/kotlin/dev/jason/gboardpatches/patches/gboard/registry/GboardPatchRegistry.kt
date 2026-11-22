@@ -82,6 +82,7 @@ import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplit
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardAccessPointPatch
 import dev.jason.gboardpatches.patches.gboard.features.splitkeyboard.gboardSplitKeyboardModePatch
 import dev.jason.gboardpatches.patches.gboard.features.spacebarlogo.gboardSpacebarLogoFeatureMarkerPatch
+import dev.jason.gboardpatches.patches.gboard.features.spacebarlanguageswitch.gboardSpacebarLanguageSwitchFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.symbolfooter.gboardSymbolFooterOrderBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.symbolfooter.gboardSymbolFooterOrderFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissBytecodePatch
@@ -204,6 +205,18 @@ val gboardSpacebarLogoPatch = gboardPublicResourcePatch(
         gboardPatchesSettingsPatch,
         gboardSpacebarLogoFeatureMarkerPatch,
     )
+}
+
+@Suppress("unused")
+val gboardSpacebarLanguageSwitchPatch = gboardPublicResourcePatch(
+    featureId = "spacebar_language_switch",
+    name = "Swipe on Spacebar to Switch Languages",
+    description = "Swipe left on the spacebar for the previous enabled language or right for the next one. Tapping still inserts a normal space.",
+    default = true,
+) {
+    compatibleWith(COMPATIBILITY_GBOARD)
+
+    dependsOn(gboardSpacebarLanguageSwitchFeatureMarkerPatch)
 }
 
 @Suppress("unused")
@@ -877,6 +890,7 @@ object GboardPublishedPatchCatalog {
         gboardEnglishQwertySlideUppercaseTogglePatch,
         gboardLongPressQuickActionsPatch,
         gboardSpacebarLogoPatch,
+        gboardSpacebarLanguageSwitchPatch,
         gboardManualIncognitoModePatch,
         gboardFloatingWebSearchPatch,
         gboardEditingAccessPointsPatch,
