@@ -59,6 +59,22 @@ public class GboardSpacebarLanguageSwitchRuntimeTest {
     }
 
     @Test
+    public void languageSlideIsSuppressedOnlyDuringCursorLongPressOrDrag() {
+        assertEquals(true,
+                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
+                        true, true, false));
+        assertEquals(true,
+                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
+                        true, false, true));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
+                        true, false, false));
+        assertEquals(false,
+                GboardSpacebarLanguageSwitchRuntime.shouldSuppressLanguageSwitchDuringCursorDrag(
+                        false, true, true));
+    }
+
+    @Test
     public void onlySpacebarLanguagePickerEventIsSuppressed() {
         assertEquals(true,
                 GboardSpacebarLanguageSwitchRuntime.isSpacebarLanguagePickerEvent(
