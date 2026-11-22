@@ -1934,7 +1934,6 @@
       "consumer_files": [
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchFeatureMarkerPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchGesturePatch.kt",
-        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchPickerPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchPointerPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchSoftKeyPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardContributionWiring.kt",
@@ -1990,16 +1989,6 @@
           ],
           "runtime_calls": [
             "SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_PROMOTE_POINTER_SWIPE"
-          ]
-        },
-        {
-          "contribution_id": "spacebar_language_switch.picker_guard",
-          "anchor_family_id": "dedicated_bytecode",
-          "phase": "dedicated",
-          "order": 275,
-          "required_bindings": [],
-          "runtime_calls": [
-            "SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_CONSUME_SPACE_IME_PICKER"
           ]
         }
       ]
