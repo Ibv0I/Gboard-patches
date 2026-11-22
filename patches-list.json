@@ -474,6 +474,18 @@
       "options": []
     },
     {
+      "name": "Spacebar Language Cycle",
+      "description": "Swipe horizontally across the spacebar to switch to the next configured Gboard language or layout. Taps, long-press and cursor movement keep their native behavior.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.google.android.inputmethod.latin": [
+          "18.5.4.993608717-release-arm64-v8a"
+        ]
+      },
+      "options": []
+    },
+    {
       "name": "Swipe Down to Dismiss Keyboard",
       "description": "從建議列或工具列向下滑動以關閉鍵盤。\nSwipe down from the suggestions or toolbar to close the keyboard.",
       "use": true,

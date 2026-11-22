@@ -90,6 +90,7 @@ import dev.jason.gboardpatches.patches.gboard.features.shiftdelete.gboardShiftDe
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.swipedismiss.gboardSwipeDismissFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.toprowswipe.gboardTopRowSwipeFeatureMarkerPatch
+import dev.jason.gboardpatches.patches.gboard.features.keyboard.gboardSpacebarLanguageCycleBytecodePatch
 import dev.jason.gboardpatches.patches.gboard.features.writingtools.gboardAiWritingToolsFeatureMarkerPatch
 import dev.jason.gboardpatches.patches.gboard.features.writingtools.gboardAiWritingToolsFlagValuePatch
 import dev.jason.gboardpatches.patches.gboard.shared.gboardPatchesExtensionCarrierPatch
@@ -579,6 +580,21 @@ val gboardCustomTopRowSwipePatch = gboardPublicResourcePatch(
 }
 
 @Suppress("unused")
+val gboardSpacebarLanguageCyclePatch = gboardPublicResourcePatch(
+    featureId = "spacebar_language_cycle",
+    name = "Spacebar Language Cycle",
+    description = "Swipe horizontally across the spacebar to switch to the next configured Gboard language or layout. Taps, long-press and cursor movement keep their native behavior.",
+    default = true,
+) {
+    compatibleWith(COMPATIBILITY_GBOARD)
+
+    dependsOn(
+        gboardPatchesSettingsPatch,
+        gboardPatchesExtensionCarrierPatch,
+    )
+}
+
+@Suppress("unused")
 val gboardDeveloperOptionsPatch = gboardPublicResourcePatch(
     featureId = "developer_options",
     name = "Developer options",
@@ -941,6 +957,7 @@ object GboardPublishedPatchCatalog {
         gboardZhuyinQuickTraditionalSimplifiedTogglePatch,
         gboardCustomSymbolsPatch,
         gboardCustomTopRowSwipePatch,
+        gboardSpacebarLanguageCyclePatch,
         gboardBackupRestorePatch,
         gboardDeveloperOptionsPatch,
         gboardSymbolsFooterOrderPatch,

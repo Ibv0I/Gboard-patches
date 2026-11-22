@@ -94,6 +94,12 @@ Import custom ZIP themes and beautiful themes from the official Rboard repositor
 </details>
 
 <details>
+  <summary><code>Spacebar Language Cycle</code></summary>
+
+  Swipe horizontally across the spacebar to switch to the next enabled Gboard language or layout. Normal taps, long-press and native cursor/trackpad movement keep their original behavior.
+</details>
+
+<details>
   <summary><code>Incognito Mode Toggle</code></summary>
 
   Add an Incognito toggle to the Access Point toolbar and configure clipboard and voice typing availability while Incognito mode is active.

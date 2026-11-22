@@ -7,6 +7,7 @@
 * **Gboard:** add the Shift + Backspace Forward Delete patch. Hold Shift and press Backspace to delete the character after the cursor, like the Delete key on a computer keyboard.
 * **Gboard:** add a **Rambler Auto Stop** option (Off, 3 seconds, 5 seconds, or custom 1–59 seconds) to **Advanced Voice Typing** to automatically stop Rambler voice typing and keep the text after the chosen period of silence.
 * **Gboard:** add a **Shortcut position** option (**First** or **Last**) to **Long-Press Editing Shortcuts** to choose where the editing shortcut appears in a key's long-press popup.
+* **Custom:** add **Spacebar Language Cycle**. Swipe left or right across the spacebar to move to the next enabled Gboard language or layout; normal space taps and native cursor/trackpad movement remain available.
 
 ### 🐛 Bug Fixes
 
@@ -20,6 +21,7 @@
 * **Gboard:** 新增「Shift + Backspace Forward Delete」Patch。按住 Shift 再按退格鍵，就能刪除游標右邊的字，就像電腦鍵盤上的 Delete 鍵。
 * **Gboard:** 在「進階語音輸入」新增「Rambler 自動停止」選項（關閉、3 秒、5 秒或自訂 1–59 秒），停止說話達設定時間後自動結束 Rambler 語音輸入並保留文字。
 * **Gboard:** 在「長按編輯快捷鍵」新增「快捷鍵位置」選項（第一個／最後一個），可自訂快捷鍵在長按選單中的位置。
+* **Custom:** 新增「Spacebar Language Cycle」，在空白鍵上左右滑動即可切換到下一個已啟用的 Gboard 語言或配置；一般空白鍵點擊與原生游標／觸控板操作保持不變。
 
 ### 🐛 修復
 

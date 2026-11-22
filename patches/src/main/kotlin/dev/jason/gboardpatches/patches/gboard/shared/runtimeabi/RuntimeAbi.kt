@@ -163,6 +163,15 @@ internal enum class RuntimeCallId(internal val encodedAbi: String) {
     ZHUYIN_TRADITIONAL_SIMPLIFIED_TOGGLE_RUNTIME_MAYBE_TOGGLE("Ldev/jason/gboardpatches/extension/zhuyintoggle/GboardZhuyinTraditionalSimplifiedToggleRuntime;->maybeToggle(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z"),
     ZHUYIN_TRADITIONAL_SIMPLIFIED_TOGGLE_RUNTIME_PATCH_INCOMING_SOFT_KEY_METADATA("Ldev/jason/gboardpatches/extension/zhuyintoggle/GboardZhuyinTraditionalSimplifiedToggleRuntime;->patchIncomingSoftKeyMetadata(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
     ZHUYIN_TRADITIONAL_SIMPLIFIED_TOGGLE_RUNTIME_PATCH_POPUP_ACTION("Ldev/jason/gboardpatches/extension/zhuyintoggle/GboardZhuyinTraditionalSimplifiedToggleRuntime;->patchPopupAction(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
+    SPACEBAR_LANGUAGE_SWIPE_BEGIN("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->begin(Ljava/lang/Object;Ljava/lang/Object;FFF)V"),
+    SPACEBAR_LANGUAGE_SWIPE_OBSERVE("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->observe(Ljava/lang/Object;FFZ)V"),
+    SPACEBAR_LANGUAGE_SWIPE_FINISH("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->finish(Ljava/lang/Object;Ljava/lang/Object;)Z"),
+    SPACEBAR_LANGUAGE_SWIPE_CLEAR("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clear(Ljava/lang/Object;)V"),
+    SPACEBAR_LANGUAGE_SWIPE_BEGIN_FROM_DOWN("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->beginFromSpacebar(Ljava/lang/Object;)V"),
+    SPACEBAR_LANGUAGE_SWIPE_OBSERVE_POINTER("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->observePointer(Ljava/lang/Object;Landroid/view/MotionEvent;I)V"),
+    SPACEBAR_LANGUAGE_SWIPE_RESOLVE_ACTION("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->resolveAction(Ljava/lang/Object;Ljava/lang/Object;Landroid/view/MotionEvent;I)Ljava/lang/Object;"),
+    SPACEBAR_LANGUAGE_SWIPE_CLEAR_ALL("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clearAll()V"),
+    SPACEBAR_LANGUAGE_SWIPE_CLEAR_ON_CANCEL("Ldev/jason/gboardpatches/extension/keyboard/GboardSpacebarLanguageSwipeRuntime;->clearOnCancel(Landroid/view/MotionEvent;)V"),
 }
 
 internal data class RuntimeAbi(
