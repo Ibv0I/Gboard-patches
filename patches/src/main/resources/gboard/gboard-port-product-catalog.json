@@ -1,7 +1,7 @@
 {
   "$schema": "gboard-port-product-catalog.schema.json",
   "format": "gboard-port-product-catalog.v1",
-  "catalog_version": "1.23.0",
+  "catalog_version": "1.24.0",
   "composition": {
     "selected_only_call_chain": true,
     "runtime_feature_mask": false
@@ -1893,6 +1893,7 @@
       "public_patch_name": "Swipe on Spacebar to Switch Languages",
       "feature_marker": "dev.jason.gboardpatches.feature.spacebar_language_switch",
       "target_family_ids": [
+        "dedicated_bytecode",
         "gesture.dispatch",
         "pointer.lifecycle",
         "softkey.bind"
@@ -1901,6 +1902,7 @@
       "consumer_files": [
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchFeatureMarkerPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchGesturePatch.kt",
+        "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchPickerPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchPointerPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/features/spacebarlanguageswitch/GboardSpacebarLanguageSwitchSoftKeyPatch.kt",
         "patches/src/main/kotlin/dev/jason/gboardpatches/patches/gboard/registry/GboardContributionWiring.kt",
@@ -1956,6 +1958,16 @@
           ],
           "runtime_calls": [
             "SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_PROMOTE_POINTER_SWIPE"
+          ]
+        },
+        {
+          "contribution_id": "spacebar_language_switch.picker_guard",
+          "anchor_family_id": "dedicated_bytecode",
+          "phase": "dedicated",
+          "order": 275,
+          "required_bindings": [],
+          "runtime_calls": [
+            "SPACEBAR_LANGUAGE_SWITCH_RUNTIME_MAYBE_CONSUME_SPACE_IME_PICKER"
           ]
         }
       ]
