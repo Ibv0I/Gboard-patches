@@ -39,9 +39,12 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         }
         try {
             ReflectionHandles handles = reflectionHandles(receiver.getClass().getClassLoader());
-            if (!handles.isSpacebar(keyMetadata)) {
+            boolean isSpacebar = handles.isSpacebar(keyMetadata);
+            if (!isSpacebar) {
                 return keyMetadata;
             }
+            Log.i(TAG, "Found spacebar SoftKeyDef at viewId="
+                    + Integer.toHexString(view.getId()));
             if (handles.hasAction(keyMetadata, handles.slideLeftActionType)
                     && handles.hasAction(keyMetadata, handles.slideRightActionType)) {
                 return keyMetadata;
@@ -53,8 +56,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             }
             Object builder = handles.keyMetadataBuilderConstructor.newInstance();
             handles.copyKeyMetadataMethod.invoke(builder, keyMetadata);
-            Object slideLeft = handles.buildEmptySlideAction(handles.slideLeftActionType, pressAction);
-            Object slideRight = handles.buildEmptySlideAction(handles.slideRightActionType, pressAction);
+            Object slideLeft = handles.buildEmptySlideAction(handles.slideLeftActionType);
+            Object slideRight = handles.buildEmptySlideAction(handles.slideRightActionType);
             if (slideLeft == null || slideRight == null) {
                 return keyMetadata;
             }
@@ -423,7 +426,7 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             return pressActionMethod.invoke(metadata, actionType) != null;
         }
 
-        Object buildEmptySlideAction(Object actionType, Object pressAction) throws Throwable {
+        Object buildEmptySlideAction(Object actionType) throws Throwable {
             Object builder = actionBuilderConstructor.newInstance();
             actionTypeField.set(builder, actionType);
             setPopupLabelsMethod.invoke(builder, (Object) new String[] {""});
