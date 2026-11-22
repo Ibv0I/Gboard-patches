@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
@@ -26,6 +27,17 @@ public final class GboardSpacebarLanguageSwitchRuntime {
 
     private static final Map<ClassLoader, ReflectionHandles> REFLECTION_BY_LOADER =
             Collections.synchronizedMap(new WeakHashMap<ClassLoader, ReflectionHandles>());
+    private static final Map<Object, SpacebarSwipeState> SPACEBAR_SWIPE_STATES =
+            Collections.synchronizedMap(new WeakHashMap<Object, SpacebarSwipeState>());
+
+    private static final class SpacebarSwipeState {
+        final long downTime;
+        boolean handled;
+
+        SpacebarSwipeState(long downTime) {
+            this.downTime = downTime;
+        }
+    }
 
     private GboardSpacebarLanguageSwitchRuntime() {
     }
@@ -172,9 +184,10 @@ public final class GboardSpacebarLanguageSwitchRuntime {
     }
 
     /**
-     * Gboard's stock qin.t() retargets the pointer after it leaves the key bounds.
-     * For the spacebar we use Gboard's own qin.h() direction resolver while the pointer is
-     * still over the key, then let qil.h() finish the normal qin.j()/qin.n() dispatch.
+     * Detects a horizontal swipe from the original spacebar touch coordinates.
+     * Gboard's qin.h() may keep returning PRESS for this key, so we do not rely
+     * on its slide resolver. We suppress key-edge retargeting while the finger
+     * moves horizontally and switch exactly once after a deliberate swipe.
      */
     public static boolean maybePromoteSpacebarHorizontalSwipe(Object tracker,
             MotionEvent motionEvent, int pointerIndex) {
@@ -199,47 +212,71 @@ public final class GboardSpacebarLanguageSwitchRuntime {
                 return false;
             }
 
-            Object previousAction = handles.pointerCurrentActionMethod.invoke(tracker);
-            if (previousAction == null) {
-                previousAction = Enum.valueOf(
-                        handles.actionTypeClass.asSubclass(Enum.class), "PRESS");
+            long downTime = motionEvent.getDownTime();
+            SpacebarSwipeState state;
+            synchronized (SPACEBAR_SWIPE_STATES) {
+                state = SPACEBAR_SWIPE_STATES.get(tracker);
+                if (state == null || state.downTime != downTime) {
+                    state = new SpacebarSwipeState(downTime);
+                    SPACEBAR_SWIPE_STATES.put(tracker, state);
+                }
+            }
+            if (state.handled) {
+                return true;
             }
 
-            // Match qil.h(): it truncates the MotionEvent coordinates before calling qin.h().
-            Object resolvedAction = handles.pointerResolveActionMethod.invoke(
-                    tracker,
-                    (float) ((int) motionEvent.getX(pointerIndex)),
-                    (float) ((int) motionEvent.getY(pointerIndex)),
-                    previousAction);
-            if (!(resolvedAction instanceof Enum<?> resolvedEnum)) {
+            // qin.B() stores the original ACTION_DOWN coordinates in b/c.
+            float startX = handles.pointerStartXField.getFloat(tracker);
+            float startY = handles.pointerStartYField.getFloat(tracker);
+            if (!Float.isFinite(startX) || !Float.isFinite(startY)) {
                 return false;
             }
 
-            String actionName = resolvedEnum.name();
-            if (!"SLIDE_LEFT".equals(actionName) && !"SLIDE_RIGHT".equals(actionName)) {
-                Log.v(TAG, "Spacebar pointer resolver returned " + actionName
-                        + " (previous=" + previousAction + ")");
+            float deltaX = motionEvent.getX(pointerIndex) - startX;
+            float deltaY = motionEvent.getY(pointerIndex) - startY;
+            float absX = Math.abs(deltaX);
+            float absY = Math.abs(deltaY);
+            int touchSlop = ViewConfiguration.get(spacebarView.getContext())
+                    .getScaledTouchSlop();
+            float density = spacebarView.getResources().getDisplayMetrics().density;
+            float switchThreshold = Math.max(touchSlop * 2.0f, 24.0f * density);
+
+            // Once the movement is clearly horizontal, keep the pointer assigned
+            // to the spacebar even if it crosses its visual edge. This prevents
+            // qin.t() from retargeting it to an adjacent key before the swipe ends.
+            if (absX < touchSlop || absX <= absY * 1.2f) {
                 return false;
             }
 
-            Object actionDef = handles.pointerFindActionMethod.invoke(tracker, resolvedAction);
-            if (actionDef == null) {
-                Log.w(TAG, "Gboard resolved " + actionName
-                        + " for the spacebar but no matching ActionDef was found");
-                return false;
+            if (absX < switchThreshold) {
+                return true;
             }
 
-            // qin.t() normally retargets the pointer when it leaves a key's bounds.
-            // Skip that edge-retarget path for a horizontal spacebar swipe. The caller
-            // qil.h() continues normally and performs qin.h() -> qin.j() -> qin.n()
-            // using Gboard's native action-dispatch flags and state.
-            Log.i(TAG, "Allowing native in-spacebar " + actionName + " dispatch");
+            synchronized (SPACEBAR_SWIPE_STATES) {
+                state.handled = true;
+            }
+
+            boolean next = deltaX > 0;
+            String direction = next ? "RIGHT" : "LEFT";
+            Log.i(TAG, "Detected spacebar swipe " + direction
+                    + " (dx=" + Math.round(deltaX)
+                    + ", dy=" + Math.round(deltaY)
+                    + ", threshold=" + Math.round(switchThreshold) + ")");
+
+            boolean switched = switchEnabledLanguage(
+                    spacebarView.getContext(), classLoader, next);
+            if (switched) {
+                Log.i(TAG, "Switched language from spacebar swipe " + direction);
+            } else {
+                Log.w(TAG, "Could not switch language for spacebar swipe " + direction);
+            }
             return true;
         } catch (Throwable error) {
-            Log.e(TAG, "Failed to resolve horizontal spacebar movement", error);
+            Log.e(TAG, "Failed to detect horizontal spacebar swipe", error);
             return false;
         }
     }
+
     static int adjacentRotationIndex(int currentIndex, int itemCount, boolean next) {
         if (itemCount < 2 || currentIndex < 0 || currentIndex >= itemCount) {
             return -1;
@@ -455,6 +492,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
         private final Object commitIntention;
         private final Class<?> actionTypeClass;
         private final Field pointerCurrentViewField;
+        private final Field pointerStartXField;
+        private final Field pointerStartYField;
         private final Method pointerCurrentActionMethod;
         private final Method pointerResolveActionMethod;
         private final Method pointerFindActionMethod;
@@ -475,6 +514,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             this.actionTypeClass = actionTypeClass;
 
             pointerCurrentViewField = pointerTrackerClass.getDeclaredField("m");
+            pointerStartXField = pointerTrackerClass.getDeclaredField("b");
+            pointerStartYField = pointerTrackerClass.getDeclaredField("c");
             pointerCurrentActionMethod = pointerTrackerClass.getDeclaredMethod("i");
             pointerResolveActionMethod = pointerTrackerClass.getDeclaredMethod(
                     "h", float.class, float.class, actionTypeClass);
@@ -518,6 +559,8 @@ public final class GboardSpacebarLanguageSwitchRuntime {
             buildKeyMetadataMethod.setAccessible(true);
             putActionMethod.setAccessible(true);
             pointerCurrentViewField.setAccessible(true);
+            pointerStartXField.setAccessible(true);
+            pointerStartYField.setAccessible(true);
             pointerCurrentActionMethod.setAccessible(true);
             pointerResolveActionMethod.setAccessible(true);
             pointerFindActionMethod.setAccessible(true);
