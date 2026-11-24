@@ -74,13 +74,13 @@ public final class GboardEditingAccessPointsContribution {
         };
     }
 
-    // Access Menu labels stay English regardless of the target Context locale.
+    // Keep editing action labels in Russian to match the localized patch description.
     static String label(EditorAction action) {
         return switch (action) {
-            case SELECT_ALL -> "Select All";
-            case COPY -> "Copy";
-            case CUT -> "Cut";
-            case PASTE -> "Paste";
+            case SELECT_ALL -> "Выделить всё";
+            case COPY -> "Копировать";
+            case CUT -> "Вырезать";
+            case PASTE -> "Вставить";
         };
     }
 
