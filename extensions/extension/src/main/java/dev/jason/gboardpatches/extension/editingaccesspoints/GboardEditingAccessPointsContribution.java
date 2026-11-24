@@ -1,6 +1,10 @@
 package dev.jason.gboardpatches.extension.editingaccesspoints;
 
 import android.content.Context;
+import android.text.TextUtils;
+import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.InputMethodSubtype;
+import java.util.Locale;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -58,7 +62,7 @@ public final class GboardEditingAccessPointsContribution {
                 int icon = icon(action);
                 // Reject missing/wrong resource types before admitting the descriptor.
                 if (!"drawable".equals(context.getResources().getResourceTypeName(icon))) continue;
-                String label = label(action);
+                String label = label(action, activeKeyboardLanguageTag(context));
                 binding.register(controller, action, icon, label,
                         () -> GboardEditingAccessPointsRuntime.click(action));
             }
@@ -74,13 +78,43 @@ public final class GboardEditingAccessPointsContribution {
         };
     }
 
-    // Keep editing action labels in Russian to match the localized patch description.
-    static String label(EditorAction action) {
+    /**
+     * Read the active keyboard subtype, not the device or Gboard settings UI language.
+     * Unknown subtypes fall back to English so labels remain readable.
+     */
+    static String activeKeyboardLanguageTag(Context context) {
+        try {
+            InputMethodManager manager =
+                    context.getSystemService(InputMethodManager.class);
+            InputMethodSubtype subtype = manager == null
+                    ? null : manager.getCurrentInputMethodSubtype();
+            if (subtype == null) {
+                return "en";
+            }
+
+            String languageTag = subtype.getLanguageTag();
+            if (TextUtils.isEmpty(languageTag)
+                    || "und".equalsIgnoreCase(Locale.forLanguageTag(
+                            languageTag.replace('_', '-')).getLanguage())) {
+                languageTag = subtype.getLocale();
+            }
+            return TextUtils.isEmpty(languageTag) ? "en" : languageTag;
+        } catch (Throwable ignored) {
+            return "en";
+        }
+    }
+
+    static String label(EditorAction action, String keyboardLanguageTag) {
+        String normalizedTag = keyboardLanguageTag == null
+                ? "" : keyboardLanguageTag.replace('_', '-');
+        String language = Locale.forLanguageTag(normalizedTag).getLanguage();
+        boolean russian = "ru".equalsIgnoreCase(language);
+
         return switch (action) {
-            case SELECT_ALL -> "Выделить всё";
-            case COPY -> "Копировать";
-            case CUT -> "Вырезать";
-            case PASTE -> "Вставить";
+            case SELECT_ALL -> russian ? "Выделить всё" : "Select All";
+            case COPY -> russian ? "Копировать" : "Copy";
+            case CUT -> russian ? "Вырезать" : "Cut";
+            case PASTE -> russian ? "Вставить" : "Paste";
         };
     }
 
