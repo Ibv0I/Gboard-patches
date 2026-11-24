@@ -37,10 +37,27 @@ public class GboardEditingAccessPointsPolicyTest {
                 GboardEditingAccessPointsSettings.key(EditorAction.CUT));
     }
 
-    @Test public void menuLabelsAreRussian() {
-        assertEquals("Выделить всё", GboardEditingAccessPointsContribution.label(EditorAction.SELECT_ALL));
-        assertEquals("Копировать", GboardEditingAccessPointsContribution.label(EditorAction.COPY));
-        assertEquals("Вырезать", GboardEditingAccessPointsContribution.label(EditorAction.CUT));
-        assertEquals("Вставить", GboardEditingAccessPointsContribution.label(EditorAction.PASTE));
+    @Test public void menuLabelsFollowKeyboardLanguage() {
+        assertEquals("Выделить всё", GboardEditingAccessPointsContribution.label(
+                EditorAction.SELECT_ALL, "ru-RU"));
+        assertEquals("Копировать", GboardEditingAccessPointsContribution.label(
+                EditorAction.COPY, "ru"));
+        assertEquals("Вырезать", GboardEditingAccessPointsContribution.label(
+                EditorAction.CUT, "ru_RU"));
+        assertEquals("Вставить", GboardEditingAccessPointsContribution.label(
+                EditorAction.PASTE, "ru"));
+
+        assertEquals("Select All", GboardEditingAccessPointsContribution.label(
+                EditorAction.SELECT_ALL, "en-US"));
+        assertEquals("Copy", GboardEditingAccessPointsContribution.label(
+                EditorAction.COPY, "en"));
+        assertEquals("Cut", GboardEditingAccessPointsContribution.label(
+                EditorAction.CUT, "en-GB"));
+        assertEquals("Paste", GboardEditingAccessPointsContribution.label(
+                EditorAction.PASTE, "en"));
+
+        // Unsupported keyboard languages retain the safe English fallback.
+        assertEquals("Copy", GboardEditingAccessPointsContribution.label(
+                EditorAction.COPY, "de-DE"));
     }
 }
