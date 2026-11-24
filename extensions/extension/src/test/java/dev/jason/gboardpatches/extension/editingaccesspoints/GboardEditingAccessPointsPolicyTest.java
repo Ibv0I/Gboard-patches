@@ -37,10 +37,10 @@ public class GboardEditingAccessPointsPolicyTest {
                 GboardEditingAccessPointsSettings.key(EditorAction.CUT));
     }
 
-    @Test public void menuLabelsAreFixedEnglish() {
-        assertEquals("Select All", GboardEditingAccessPointsContribution.label(EditorAction.SELECT_ALL));
-        assertEquals("Copy", GboardEditingAccessPointsContribution.label(EditorAction.COPY));
-        assertEquals("Cut", GboardEditingAccessPointsContribution.label(EditorAction.CUT));
-        assertEquals("Paste", GboardEditingAccessPointsContribution.label(EditorAction.PASTE));
+    @Test public void menuLabelsAreRussian() {
+        assertEquals("Выделить всё", GboardEditingAccessPointsContribution.label(EditorAction.SELECT_ALL));
+        assertEquals("Копировать", GboardEditingAccessPointsContribution.label(EditorAction.COPY));
+        assertEquals("Вырезать", GboardEditingAccessPointsContribution.label(EditorAction.CUT));
+        assertEquals("Вставить", GboardEditingAccessPointsContribution.label(EditorAction.PASTE));
     }
 }
